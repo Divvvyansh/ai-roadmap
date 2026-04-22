@@ -19,6 +19,7 @@ Answer the user's question using ONLY the provided data.
 Rules:
 - Do not make up data
 - Only use the expenses provided
+- If you can't access or don't see any data in the passed expenses, say "I don't have any data".
 - If the answer cannot be determined, say "I don't have enough data".
 - Be concise.
 - Return a direct answer (no explanations).

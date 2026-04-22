@@ -74,7 +74,8 @@ def main():
                         print("ExpenseAI: Invalid input. Expense not saved.")
 
             except Exception as e:
-                print("Error extracting expense:", e)
+                print("⚠️ Couldn't understand that expense. Try rephrasing.")
+                print(f"Debug info: {e}")
 
         elif user_input.lower() == 'exit':
             break

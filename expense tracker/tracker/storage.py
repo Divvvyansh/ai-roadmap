@@ -5,7 +5,7 @@ FILE_PATH = "data/expenses.json"
 def save_expense(expense: dict):
     try:
         with open(FILE_PATH, "a") as f:
-            f.write(json.dumps(expense) + "\n")
+            f.write("\n"+json.dumps(expense))
     except Exception as e:
         raise 
 
