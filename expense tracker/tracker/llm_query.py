@@ -73,3 +73,44 @@ Question:
     history.append({"role": "assistant", "content": answer})
 
     return answer
+
+Sys_prompt_2= """
+You are a financial summarizer.
+
+You are given a list of expenses in JSON format.
+
+return a summary of the expenses with only the following information:
+- Total spent
+- Top cartegory (the category with the highest total spending)
+- Amount spent in top category
+- Biggest single expense (return merchant and amount)
+- Most frequent merchant (return merchant and number of transactions)
+
+Example output:
+Total spent: 1234.56 EUR
+Top category: Food & Beverages (456.78 EUR)
+Biggest single expense: Amazon (123.45 EUR)
+Most frequent merchant: Starbucks (5 transactions)
+
+Rules:
+- Do not make up data
+- Only use the expenses provided
+- If the answer cannot be determined, say "I don't have enough data".
+- Be concise.
+- Return a direct answer (no explanations).
+- All currencies are in EUR.
+"""
+
+def summarizer(expenses):
+    client = get_client()
+
+    expenses_json = json.dumps(expenses)
+
+    response = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=500,
+        system=Sys_prompt_2,
+        messages=[{"role": "user", "content": f"Expenses:\n{expenses_json}"}]
+    )
+
+    return response.content[0].text.strip()

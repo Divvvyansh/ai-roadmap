@@ -1,6 +1,6 @@
 import json
 
-FILE_PATH = "../data/expenses.json"
+FILE_PATH = "data/expenses.json"
 
 def save_expense(expense: dict):
     try:
@@ -16,5 +16,5 @@ def load_expenses():
             for line in f:
                 expenses.append(json.loads(line))
     except FileNotFoundError:
-        pass
+        raise
     return expenses
