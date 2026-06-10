@@ -6,6 +6,7 @@ Errors are returned as {"error": "..."} so Claude can read them and respond natu
 
 import os
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
@@ -138,10 +139,10 @@ def find_free_slots(date: str, duration_minutes: int) -> list[dict]:
         return free
 
     except Exception as e:
-        return [{"error": str(e)}]}
+        return [{"error": str(e)}]
 
 
-def create_event(title: str, start: str, end: str, description: str = "") -> dict:
+def create_event(title: str, start: str, end: str, description: str = "", attendees: Optional[list] = None) -> dict:
     """
     Create a new calendar event.
 
@@ -157,6 +158,8 @@ def create_event(title: str, start: str, end: str, description: str = "") -> dic
             "start": {"dateTime": start, "timeZone": TIMEZONE},
             "end": {"dateTime": end, "timeZone": TIMEZONE},
         }
+        if attendees:
+            body["attendees"] = [{"email": a} for a in attendees]
         event = service.events().insert(calendarId="primary", body=body).execute()
         return {
             "id": event["id"],
@@ -205,6 +208,23 @@ def update_event(event_id: str, changes: dict) -> dict:
             "end": updated["end"].get("dateTime"),
             "link": updated.get("htmlLink"),
         }
+
+    except HttpError as e:
+        return {"error": f"Google API error: {e}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def cancel_event(event_id: str) -> dict:
+    """
+    Cancel an existing calendar event by event_id.
+
+    Returns a success message or an error message.
+    """
+    try:
+        service = _get_service()
+        service.events().delete(calendarId="primary", eventId=event_id).execute()
+        return {"message": "Event cancelled successfully."}
 
     except HttpError as e:
         return {"error": f"Google API error: {e}"}

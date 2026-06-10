@@ -2,6 +2,8 @@
 JSON Schema definitions for the 4 calendar tools.
 These are passed directly to the Anthropic API's `tools` parameter.
 Keep this file in sync with the function signatures in calendar_tools.py.
+
+Valid top-level keys per tool: name, description, input_schema — nothing else.
 """
 
 TOOLS = [
@@ -26,22 +28,12 @@ TOOLS = [
             },
             "required": ["start_date", "end_date"],
         },
-        "input_examples": {
-            "Get all events for June 6, 2026": {
-                "start_date": "2026-06-06",
-                "end_date": "2026-06-07",
-            },
-            "Get events from June 6, 9am to June 6, 5pm": {
-                "start_date": "2026-06-06T09:00:00",
-                "end_date": "2026-06-06T17:00:00",
-            },
-        },
     },
     {
         "name": "find_free_slots",
         "description": (
             "Find free time windows on a specific day that fit a given duration. "
-            "Only looks within 08:00–20:00 IST. "
+            "Only look within 08:00–20:00 CEST. "
             "Use this when the user asks for 'a free slot', 'when am I available', or similar. "
             "date must be an ISO 8601 date (2026-06-06)."
         ),
@@ -58,12 +50,6 @@ TOOLS = [
                 },
             },
             "required": ["date", "duration_minutes"],
-        },
-        "input_examples": {
-            "Find a 60-minute slot on June 6, 2026": {
-                "date": "2026-06-06",
-                "duration_minutes": 60,
-            },
         },
     },
     {
@@ -93,7 +79,7 @@ TOOLS = [
                 "attendees": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of attendee email addresses.",
+                    "description": "Optional list of attendee email addresses.",
                 },
                 "description": {
                     "type": "string",
@@ -101,21 +87,6 @@ TOOLS = [
                 },
             },
             "required": ["title", "start", "end"],
-        },
-        "input_examples": {
-            "Create a meeting with John and Jane": {
-                "title": "Team Meeting",
-                "start": "2026-06-06T14:00:00+05:30",
-                "end": "2026-06-06T15:00:00+05:30",
-                "attendees": ["john@example.com", "jane@example.com"],
-                "description": "Discuss project updates.",
-            },
-            "Block 30 minutes on my calendar on June 6, 2026 to meditate": {
-                "title": "30-minute meditation",
-                "start": "2026-06-06T16:00:00+05:30",
-                "end": "2026-06-06T16:30:00+05:30",
-                "description": "Discuss project updates.",   ## Attendees are optional
-            },
         },
     },
     {
@@ -150,26 +121,24 @@ TOOLS = [
             },
             "required": ["event_id", "changes"],
         },
-        "input_examples": {
-            "Move an event to 3pm": {
-                "event_id": "abc123",
-                "changes": {
-                    "start": "2026-06-06T15:00:00+05:30",
-                    "end": "2026-06-06T16:00:00+05:30",
+    },
+    {
+        "name": "cancel_event",
+        "description": (
+            "Cancel an existing calendar event. "
+            "ALWAYS get user confirmation before calling this tool. "
+            "Show the user what will be deleted, then ask 'Shall I go ahead?' "
+            "Requires the event_id from a prior get_events call."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "string",
+                    "description": "The Google Calendar event ID from a prior get_events result.",
                 },
             },
-            "Rename an event to 'Project Sync'": {
-                "event_id": "abc123",
-                "changes": {
-                    "title": "Project Sync",
-                },
-            },
-            "Add a description to an event": {
-                "event_id": "abc123",
-                "changes": {
-                    "description": "Discuss project updates and next steps.",
-                },
-            },
+            "required": ["event_id"],
         },
     },
 ]
