@@ -9,11 +9,29 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
+import urllib.request
+import json as _json
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+
+# Open-Meteo location for Paris (no API key required)
+_LATITUDE = 48.8566
+_LONGITUDE = 2.3522
+
+# WMO weather interpretation codes → human-readable description
+_WMO_CODES = {
+    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Fog", 48: "Icy fog",
+    51: "Light drizzle", 53: "Moderate drizzle", 55: "Heavy drizzle",
+    61: "Light rain", 63: "Moderate rain", 65: "Heavy rain",
+    71: "Light snow", 73: "Moderate snow", 75: "Heavy snow",
+    80: "Light showers", 81: "Moderate showers", 82: "Heavy showers",
+    95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Heavy thunderstorm with hail",
+}
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 TIMEZONE = "Europe/Paris"
@@ -232,17 +250,61 @@ def cancel_event(event_id: str) -> dict:
         return {"error": str(e)}
 
 
+def get_weather(date: str) -> dict:
+    """
+    Fetch weather forecast for a given date using the free Open-Meteo API.
+
+    date must be an ISO 8601 date string (YYYY-MM-DD).
+    Returns a dict with: date, description, temp_min, temp_max, precipitation_mm.
+    Returns {"error": "..."} on failure.
+    """
+    try:
+        url = (
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={_LATITUDE}&longitude={_LONGITUDE}"
+            f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
+            f"&timezone=Europe%2FParis"
+            f"&start_date={date}&end_date={date}"
+        )
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            data = _json.loads(resp.read().decode())
+
+        daily = data.get("daily", {})
+        if not daily.get("time"):
+            return {"error": "No weather data returned for that date."}
+
+        code = daily["weathercode"][0]
+        return {
+            "date": daily["time"][0],
+            "description": _WMO_CODES.get(code, f"Weather code {code}"),
+            "temp_min": daily["temperature_2m_min"][0],
+            "temp_max": daily["temperature_2m_max"][0],
+            "precipitation_mm": daily["precipitation_sum"][0],
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _to_rfc3339(dt_str: str, start_of_day: bool) -> str:
     """Convert an ISO date or datetime string to a timezone-aware RFC 3339 string."""
     tz = ZoneInfo(TIMEZONE)
+    # Bare date (YYYY-MM-DD) — fromisoformat parses it as midnight on all Python
+    # versions, so start_of_day=False would silently return 00:00 instead of 23:59.
+    # Detect bare dates explicitly before calling fromisoformat.
+    if "T" not in dt_str and len(dt_str) == 10:
+        d = datetime.strptime(dt_str, "%Y-%m-%d")
+        hour = 0 if start_of_day else 23
+        minute = 0 if start_of_day else 59
+        second = 0 if start_of_day else 59
+        return d.replace(hour=hour, minute=minute, second=second, tzinfo=tz).isoformat()
     try:
         dt = datetime.fromisoformat(dt_str)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=tz)
     except ValueError:
-        # Bare date like "2026-06-06"
         d = datetime.strptime(dt_str, "%Y-%m-%d")
         if start_of_day:
             dt = d.replace(hour=0, minute=0, second=0, tzinfo=tz)

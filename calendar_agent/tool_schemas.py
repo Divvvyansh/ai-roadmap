@@ -123,6 +123,24 @@ TOOLS = [
         },
     },
     {
+        "name": "get_weather",
+        "description": (
+            "Fetch the weather forecast for a specific date in Leuven, Belgium using the Open-Meteo API. "
+            "Returns min/max temperature (°C), precipitation (mm), and a plain-English description. "
+            "Use this when the user asks about the weather, or when generating a morning briefing."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "description": "The date to fetch weather for, ISO 8601 format (YYYY-MM-DD).",
+                },
+            },
+            "required": ["date"],
+        },
+    },
+    {
         "name": "cancel_event",
         "description": (
             "Cancel an existing calendar event. "
