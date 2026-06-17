@@ -210,5 +210,3 @@ __marimo__/
 # Google OAuth — never commit
 credentials.json
 token.json
-
-.claude/*

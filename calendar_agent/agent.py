@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
-from calendar_tools import create_event, find_free_slots, get_events, update_event, cancel_event, get_weather
+from calendar_tools import create_event, find_free_slots, get_events, update_event, cancel_event, get_weather, add_invitee
 from tool_schemas import TOOLS
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
@@ -49,6 +49,7 @@ TOOL_MAP = {
     "update_event": update_event,
     "cancel_event": cancel_event,
     "get_weather": get_weather,
+    "add_invitee": add_invitee,
 }
 
 

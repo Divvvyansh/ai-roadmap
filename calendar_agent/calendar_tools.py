@@ -286,6 +286,30 @@ def get_weather(date: str) -> dict:
         return {"error": str(e)}
 
 
+def add_invitee(event_id: str, email: str) -> dict:
+    try:
+        service = _get_service()
+        event = service.events().get(calendarId="primary", eventId=event_id).execute()
+        attendees = event.get("attendees", [])
+        if any(a.get("email") == email for a in attendees):
+            return {"error": f"{email} is already an attendee of this event."}
+        attendees.append({"email": email})
+        updated = service.events().patch(
+            calendarId="primary",
+            eventId=event_id,
+            body={"attendees": attendees},
+        ).execute()
+        return {
+            "id": updated["id"],
+            "title": updated.get("summary"),
+            "attendees": [a["email"] for a in updated.get("attendees", [])],
+        }
+    except HttpError as e:
+        return {"error": f"Google API error: {e}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _to_rfc3339(dt_str: str, start_of_day: bool) -> str:

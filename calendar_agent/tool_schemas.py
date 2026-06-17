@@ -141,6 +141,29 @@ TOOLS = [
         },
     },
     {
+        "name": "add_invitee",
+        "description": (
+            "Add a single attendee to an existing calendar event by event_id. "
+            "ALWAYS get user confirmation before calling this tool. "
+            "Show the user the event title and the email being added, then ask 'Shall I go ahead?' "
+            "Requires the event_id from a prior get_events call."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "string",
+                    "description": "The Google Calendar event ID from a prior get_events result.",
+                },
+                "email": {
+                    "type": "string",
+                    "description": "Email address of the attendee to add.",
+                },
+            },
+            "required": ["event_id", "email"],
+        },
+    },
+    {
         "name": "cancel_event",
         "description": (
             "Cancel an existing calendar event. "
