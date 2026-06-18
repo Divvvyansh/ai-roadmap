@@ -209,6 +209,9 @@ __marimo__/
 # Corpus
 corpus/
 
+#chromaDB
+chroma_store/
+
 credentials.json
 token.json
 dev-guide.md
