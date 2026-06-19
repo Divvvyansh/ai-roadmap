@@ -71,7 +71,7 @@ def embed_and_store(chunks: list[dict], batch_size: int = 10, seconds_between_ba
     tier: 3 requests/min, 10K tokens/min. A small batch keeps each request's token
     count well under the per-minute budget, and the sleep keeps us under 3 req/min.
     """
-    collection = chroma_client.get_or_create_collection(COLLECTION_NAME)
+    collection = chroma_client.create_collection(name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"})
 
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i : i + batch_size]
