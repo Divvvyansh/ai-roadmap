@@ -59,7 +59,7 @@ def retrieve(query: str, k: int = 5, threshold: float = 0.5) -> list[Chunk]:
             )
             chunks.append(chunk)
 
-    return chunks, results["distances"][0]
+    return chunks
 
 
 def main():
@@ -70,10 +70,9 @@ def main():
     ]
     for query in test_queries:
         print(f"\nQuery: {query!r}")
-        chunks, distances = retrieve(query, k=5, threshold=0.6)
+        chunks = retrieve(query, k=5, threshold=0.6)
         if not chunks:
             print("  (no chunks passed the threshold)")
-            print("distances found:", distances)
         for c in chunks:
             print(f"  [{c.distance:.3f}] {c.doc_id}#{c.position}: {c.text[:80]!r}")
 
