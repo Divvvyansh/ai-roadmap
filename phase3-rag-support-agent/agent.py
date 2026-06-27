@@ -19,7 +19,8 @@ SYSTEM_PROMPT = "You are a helpful assistant that answers user's queries about f
 "Always break down the user's question into a concise query that can be run through a retrieval tool to search " \
 "the fastapi documentation. " \
 "RULES: " \
-"- Always run the SEARCH_DOCS_TOOL before answering the user's query."  
+"- Always run the SEARCH_DOCS_TOOL before answering the user's query." \
+"- If no results are found from the tool call, reply with what is returned from the tool." 
 
 def run_tool(tool_name: str, tool_input: dict) -> tuple[str, list[Chunk]]:
     """Dispatch a tool_use block to the actual Python function and return a string result."""
@@ -45,15 +46,24 @@ def ask(question: str) -> dict:
     """
     messages = [{"role": "user", "content": question}]
     chunks_used = []
+    first_turn = True
 
     while True:
+        extra = {}
+        if first_turn:
+            extra["tool_choice"] = {"type": "tool", "name": "search_docs"}
         response = client.messages.create(
             model=MODEL,
             system=SYSTEM_PROMPT,
             tools=[SEARCH_DOCS_TOOL],
+            **extra,
             messages=messages,
             max_tokens=1024,
         )
+
+        first_turn = False
+            
+
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason == "end_turn":
@@ -63,11 +73,12 @@ def ask(question: str) -> dict:
             return {"answer": text, "chunks_used": chunks_used}
         
         if response.stop_reason == "tool_use":
-            tool_result =[]
+            tool_result = []
+            turn_chunks = []
             for block in response.content:
                 if block.type != "tool_use":
                     continue
-                
+
                 retreived, chunks = run_tool(block.name, block.input)
 
                 tool_result.append(
@@ -78,6 +89,10 @@ def ask(question: str) -> dict:
                     }
                 )
                 chunks_used.append(chunks)
+                turn_chunks.append(chunks)
+
+            if all(c == [] for c in turn_chunks):
+                return {"answer": "No results found in the documentation.", "chunks_used": chunks_used}
 
             messages.append({"role": "user", "content": tool_result})
             continue
