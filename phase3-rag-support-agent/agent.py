@@ -3,6 +3,7 @@ RAG agent: Claude + a search_docs tool backed by retriever.retrieve().
 """
 import os
 import json
+from collections import Counter
 
 import anthropic
 from dotenv import load_dotenv
@@ -39,6 +40,25 @@ def run_tool(tool_name: str, tool_input: dict) -> tuple[str, list[Chunk]]:
     raise ValueError(f"Unknown tool: {tool_name}")
 
 
+def top_doc_ids(chunks_used: list[list[Chunk]], n: int = 2) -> list[str]:
+    """Rank doc_ids by number of distinct chunks contributed, return top n."""
+    seen_chunks = {}  
+
+    for call_chunks in chunks_used:
+        for chunk in call_chunks:
+            if chunk.id not in seen_chunks:
+                seen_chunks[chunk.id] = chunk
+            pass
+
+    doc_counts = Counter()  # TODO: doc_id -> count of distinct chunks
+    for chunk in seen_chunks.values():
+        if chunk.doc_id:
+            doc_counts[chunk.doc_id] += 1
+        pass
+
+    return [doc_id for doc_id, count in doc_counts.most_common(n)]
+
+
 def ask(question: str) -> dict:
     """
     Run the full tool-use loop for one question.
@@ -70,7 +90,8 @@ def ask(question: str) -> dict:
             text = " ".join(
                 block.text for block in response.content if hasattr(block, "text")
             )
-            return {"answer": text, "chunks_used": chunks_used}
+            docs = top_doc_ids(chunks_used)
+            return {"answer": text, "docs_used": docs, "chunks_used": chunks_used}
         
         if response.stop_reason == "tool_use":
             tool_result = []
@@ -92,12 +113,12 @@ def ask(question: str) -> dict:
                 turn_chunks.append(chunks)
 
             if all(c == [] for c in turn_chunks):
-                return {"answer": "No results found in the documentation.", "chunks_used": chunks_used}
+                return {"answer": "No results found in the documentation.", "docs_used": [], "chunks_used": chunks_used}
 
             messages.append({"role": "user", "content": tool_result})
             continue
 
-        return {"answer": "", "chunks_used": chunks_used}
+        return {"answer": "", "docs_used": [], "chunks_used": chunks_used}
 
 
 def main():
@@ -109,7 +130,7 @@ def main():
         print(f"\nQ: {q}")
         result = ask(q)
         print(f"A: {result['answer']}")
-        print(f"chunks_used: {result['chunks_used']}")
+        print(f"docs_used: {result['docs_used']}")
 
 
 if __name__ == "__main__":

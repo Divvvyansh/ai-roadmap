@@ -37,10 +37,13 @@ def retrieve(query: str, k: int = 5, threshold: float = 0.5) -> list[Chunk]:
     for attempt in range(3):
         try:
             query_embedding = vo.embed([query], model="voyage-3.5", input_type="query").embeddings[0]
+            break
         except voyageai.error.RateLimitError:
-            wait = 20 * (attempt + 1)  
+            wait = 20 * (attempt + 1)
             print(f"rate limited, waiting {wait}s (attempt {attempt + 1}/{3})")
             time.sleep(wait)
+    else:
+        raise RuntimeError("Voyage embedding failed after 3 rate-limit retries")
 
     results = collection.query(query_embeddings=[query_embedding],
                                n_results=k,
