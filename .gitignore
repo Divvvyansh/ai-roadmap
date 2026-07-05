@@ -214,5 +214,7 @@ chroma_store/
 
 credentials.json
 token.json
-dev-guide.md
-plan.md
+
+## markdown files
+*.md
+

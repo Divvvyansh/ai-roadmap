@@ -1,9 +1,13 @@
 """
 RAG agent: Claude + a search_docs tool backed by retriever.retrieve().
 """
+import sys
 import os
 import json
 from collections import Counter
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "RAG"))
 
 import anthropic
 from dotenv import load_dotenv

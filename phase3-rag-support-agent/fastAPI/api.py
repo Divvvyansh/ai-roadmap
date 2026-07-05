@@ -1,7 +1,11 @@
 """
 FastAPI server exposing the RAG agent.
 """
+import sys
 import logging
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "Agent"))
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field

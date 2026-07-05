@@ -1,0 +1,304 @@
+{
+  "k": 5,
+  "threshold": 0.5,
+  "summary": {
+    "mean_precision": 0.611,
+    "mean_recall": 0.599
+  },
+  "results": [
+    {
+      "id": "q001",
+      "category": "easy",
+      "question": "How do I add a background task to a path operation?",
+      "retrieved_ids": [
+        "background-tasks_8",
+        "background-tasks_24"
+      ],
+      "relevant_ids": [
+        "background-tasks_3",
+        "background-tasks_4",
+        "background-tasks_8",
+        "background-tasks_9",
+        "background-tasks_24"
+      ],
+      "precision": 1.0,
+      "recall": 0.4
+    },
+    {
+      "id": "q002",
+      "category": "easy",
+      "question": "How do I set a custom response status code?",
+      "retrieved_ids": [
+        "response-status-code_49",
+        "response-status-code_10",
+        "response-status-code_0",
+        "response-status-code_6",
+        "path-operation-configuration_0"
+      ],
+      "relevant_ids": [
+        "response-status-code_0",
+        "response-status-code_6"
+      ],
+      "precision": 0.4,
+      "recall": 1.0
+    },
+    {
+      "id": "q003",
+      "category": "easy",
+      "question": "How do I validate a query parameter with a regex pattern?",
+      "retrieved_ids": [
+        "query-params-str-validations_73",
+        "query-params-str-validations_72",
+        "query-params-str-validations_149",
+        "query-params-str-validations_109"
+      ],
+      "relevant_ids": [
+        "query-params-str-validations_72",
+        "query-params-str-validations_73"
+      ],
+      "precision": 0.5,
+      "recall": 1.0
+    },
+    {
+      "id": "q004",
+      "category": "easy",
+      "question": "How do I add CORS middleware to a FastAPI app?",
+      "retrieved_ids": [
+        "cors_41",
+        "cors_6",
+        "cors_8",
+        "cors_37",
+        "cors_28"
+      ],
+      "relevant_ids": [
+        "cors_8",
+        "cors_12",
+        "cors_13",
+        "cors_41"
+      ],
+      "precision": 0.4,
+      "recall": 0.5
+    },
+    {
+      "id": "q005",
+      "category": "easy",
+      "question": "How do I return a custom error response with HTTPException?",
+      "retrieved_ids": [
+        "handling-errors_3",
+        "handling-errors_65",
+        "handling-errors_20"
+      ],
+      "relevant_ids": [
+        "handling-errors_3",
+        "handling-errors_5",
+        "handling-errors_9",
+        "handling-errors_20"
+      ],
+      "precision": 0.667,
+      "recall": 0.5
+    },
+    {
+      "id": "q006",
+      "category": "hard",
+      "question": "How do I combine path parameters with numeric validation and a request body model in the same endpoint?",
+      "retrieved_ids": [
+        "path-params-numeric-validations_29",
+        "path-params-numeric-validations_0"
+      ],
+      "relevant_ids": [
+        "path-params-numeric-validations_0",
+        "path-params-numeric-validations_29",
+        "path-params-numeric-validations_39",
+        "body-multiple-params_0",
+        "body-multiple-params_5",
+        "body_62",
+        "body_63"
+      ],
+      "precision": 1.0,
+      "recall": 0.286
+    },
+    {
+      "id": "q007",
+      "category": "hard",
+      "question": "What's the difference between using response_model and just returning a dict, and how do I exclude unset fields from the response?",
+      "retrieved_ids": [
+        "response-model_173",
+        "response-model_129",
+        "response-model_120",
+        "body-updates_21",
+        "response-model_29"
+      ],
+      "relevant_ids": [
+        "response-model_61",
+        "response-model_69",
+        "response-model_120",
+        "response-model_129",
+        "response-model_173",
+        "body-updates_12",
+        "body-updates_13",
+        "body-updates_21"
+      ],
+      "precision": 0.8,
+      "recall": 0.5
+    },
+    {
+      "id": "q011",
+      "category": "easy",
+      "question": "How do I serve static files in FastAPI?",
+      "retrieved_ids": [
+        "static-files_3",
+        "static-files_11",
+        "static-files_0",
+        "static-files_8",
+        "testing_32"
+      ],
+      "relevant_ids": [
+        "static-files_0",
+        "static-files_3",
+        "static-files_8",
+        "static-files_11"
+      ],
+      "precision": 0.8,
+      "recall": 1.0
+    },
+    {
+      "id": "q012",
+      "category": "easy",
+      "question": "How do I read a custom request header in a path operation?",
+      "retrieved_ids": [],
+      "relevant_ids": [
+        "header-params_0",
+        "header-params_7",
+        "header-params_10",
+        "header-params_34"
+      ],
+      "precision": 0.0,
+      "recall": 0.0
+    },
+    {
+      "id": "q013",
+      "category": "easy",
+      "question": "How do I accept a file upload in FastAPI?",
+      "retrieved_ids": [
+        "request-files_10",
+        "request-files_53",
+        "request-files_2",
+        "request-forms-and-files_4",
+        "request-files_41"
+      ],
+      "relevant_ids": [
+        "request-files_1",
+        "request-files_2",
+        "request-files_10",
+        "request-files_13",
+        "request-files_63"
+      ],
+      "precision": 0.4,
+      "recall": 0.4
+    },
+    {
+      "id": "q014",
+      "category": "easy",
+      "question": "How do I group path operations under a tag in the OpenAPI docs?",
+      "retrieved_ids": [
+        "metadata_28",
+        "bigger-applications_140",
+        "metadata_41",
+        "bigger-applications_143",
+        "path-operation-configuration_4"
+      ],
+      "relevant_ids": [
+        "path-operation-configuration_4",
+        "path-operation-configuration_8",
+        "metadata_28",
+        "metadata_41"
+      ],
+      "precision": 0.6,
+      "recall": 0.75
+    },
+    {
+      "id": "q015",
+      "category": "easy",
+      "question": "How do I add custom middleware that runs on every request in FastAPI?",
+      "retrieved_ids": [
+        "cors_8",
+        "middleware_0",
+        "middleware_3",
+        "middleware_24",
+        "bigger-applications_272"
+      ],
+      "relevant_ids": [
+        "middleware_0",
+        "middleware_3",
+        "middleware_14"
+      ],
+      "precision": 0.4,
+      "recall": 0.667
+    },
+    {
+      "id": "q016",
+      "category": "hard",
+      "question": "How do I accept both form fields and a file upload in the same endpoint?",
+      "retrieved_ids": [
+        "request-forms-and-files_4",
+        "request-forms-and-files_9",
+        "request-forms-and-files_0",
+        "request-files_63",
+        "request-files_44"
+      ],
+      "relevant_ids": [
+        "request-forms-and-files_0",
+        "request-forms-and-files_1",
+        "request-forms-and-files_2",
+        "request-forms-and-files_4",
+        "request-forms-and-files_6",
+        "request-forms-and-files_9",
+        "request-files_44"
+      ],
+      "precision": 0.8,
+      "recall": 0.571
+    },
+    {
+      "id": "q017",
+      "category": "hard",
+      "question": "How do I write a test for a FastAPI endpoint, and what client should I use?",
+      "retrieved_ids": [
+        "testing_0",
+        "testing_3",
+        "testing_10",
+        "testing_4",
+        "testing_46"
+      ],
+      "relevant_ids": [
+        "testing_0",
+        "testing_2",
+        "testing_3",
+        "testing_4",
+        "testing_7",
+        "testing_10"
+      ],
+      "precision": 0.8,
+      "recall": 0.667
+    },
+    {
+      "id": "q018",
+      "category": "hard",
+      "question": "What does jsonable_encoder do and when do I need it instead of just returning a Pydantic model directly?",
+      "retrieved_ids": [
+        "encoder_1",
+        "encoder_0",
+        "encoder_5",
+        "testing_46",
+        "server-sent-events_24"
+      ],
+      "relevant_ids": [
+        "encoder_0",
+        "encoder_1",
+        "encoder_3",
+        "encoder_5"
+      ],
+      "precision": 0.6,
+      "recall": 0.75
+    }
+  ]
+}

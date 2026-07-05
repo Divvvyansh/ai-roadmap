@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CHROMA_PATH = Path(__file__).parent / "chroma_store"
-COLLECTION_NAME = "support_docs"
+CHROMA_PATH = Path(__file__).parent.parent / "chroma_store"
+COLLECTION_NAME = "support_docs_semantic"
 
 vo = voyageai.Client()
 chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
