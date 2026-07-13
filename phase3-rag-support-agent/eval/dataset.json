@@ -1,0 +1,195 @@
+{
+  "_meta": {
+    "schema_version": "1.0",
+    "corpus": "FastAPI documentation",
+    "notes": [
+      "relevant_chunk_ids: fill these in manually after running retrieval and inspecting which chunks actually came back for each question. These are required for precision@k and recall@k in run_eval.py.",
+      "expected_answer: a reference answer for groundedness checking — does not need to be verbatim, just captures the key claims the agent should make.",
+      "should_decline: true means the agent should return its hardcoded decline message, not attempt an answer.",
+      "category — easy: answer lives in one chunk; hard: requires synthesizing across chunks; out-of-scope: not in corpus; malformed: API-layer boundary test (rejected before reaching the agent)."
+    ]
+  },
+  "questions": [
+    {
+      "id": "q001",
+      "category": "easy",
+      "question": "How do I add a background task to a path operation?",
+      "expected_answer": "Import BackgroundTasks from fastapi, add a parameter of type BackgroundTasks to your path operation function, then call background_tasks.add_task(fn, *args) to schedule a function to run after the response is sent.",
+      "should_decline": false,
+      "relevant_doc_ids": ["background-tasks"],
+      "relevant_chunk_ids": ["background-tasks_3", "background-tasks_4", "background-tasks_8", "background-tasks_9", "background-tasks_24"]
+    },
+    {
+      "id": "q002",
+      "category": "easy",
+      "question": "How do I set a custom response status code?",
+      "expected_answer": "Use the status_code parameter on the path operation decorator, e.g. @app.post('/items', status_code=201). You can use integer literals or the constants in fastapi.status.",
+      "should_decline": false,
+      "relevant_doc_ids": ["response-status-code"],
+      "relevant_chunk_ids": ["response-status-code_0", "response-status-code_6"]
+    },
+    {
+      "id": "q003",
+      "category": "easy",
+      "question": "How do I validate a query parameter with a regex pattern?",
+      "expected_answer": "Use Query() with the pattern parameter, e.g. Query(pattern='^fixedquery$'). FastAPI will validate the value against the regex and return a 422 if it doesn't match.",
+      "should_decline": false,
+      "relevant_doc_ids": ["query-params-str-validations"],
+      "relevant_chunk_ids": ["query-params-str-validations_72", "query-params-str-validations_73"]
+    },
+    {
+      "id": "q004",
+      "category": "easy",
+      "question": "How do I add CORS middleware to a FastAPI app?",
+      "expected_answer": "Import CORSMiddleware from fastapi.middleware.cors and add it with app.add_middleware(CORSMiddleware, allow_origins=[...], allow_methods=[...], allow_headers=[...]). Setting allow_origins=['*'] permits all origins.",
+      "should_decline": false,
+      "relevant_doc_ids": ["cors"],
+      "relevant_chunk_ids": ["cors_8", "cors_12", "cors_13", "cors_41"]
+    },
+    {
+      "id": "q005",
+      "category": "easy",
+      "question": "How do I return a custom error response with HTTPException?",
+      "expected_answer": "Raise HTTPException with a status_code and a detail string, e.g. raise HTTPException(status_code=404, detail='Item not found'). FastAPI catches it and returns a JSON response with that status code and detail.",
+      "should_decline": false,
+      "relevant_doc_ids": ["handling-errors"],
+      "relevant_chunk_ids": ["handling-errors_3", "handling-errors_5", "handling-errors_9", "handling-errors_20"]
+    },
+    {
+      "id": "q006",
+      "category": "hard",
+      "question": "How do I combine path parameters with numeric validation and a request body model in the same endpoint?",
+      "expected_answer": "Declare the path parameter with Path() and pass numeric constraints like ge, le, gt, lt. Declare the body as a Pydantic BaseModel parameter. FastAPI distinguishes them by type: path params match the URL template, body params are Pydantic models, query params are everything else.",
+      "should_decline": false,
+      "relevant_doc_ids": ["path-params-numeric-validations", "body-multiple-params"],
+      "relevant_chunk_ids": ["path-params-numeric-validations_0", "path-params-numeric-validations_29", "path-params-numeric-validations_39", "body-multiple-params_0", "body-multiple-params_5", "body_62", "body_63"]
+    },
+    {
+      "id": "q007",
+      "category": "hard",
+      "question": "What's the difference between using response_model and just returning a dict, and how do I exclude unset fields from the response?",
+      "expected_answer": "response_model validates and filters the response — only fields declared in the model are included, extra fields from the return value are stripped. To exclude fields the client didn't set, use response_model_exclude_unset=True on the decorator, which omits any field whose value was not explicitly provided.",
+      "should_decline": false,
+      "relevant_doc_ids": ["response-model", "body-updates"],
+      "relevant_chunk_ids": ["response-model_61", "response-model_69", "response-model_120", "response-model_129", "response-model_173", "body-updates_12", "body-updates_13", "body-updates_21"]
+    },
+    {
+      "id": "q008",
+      "category": "out-of-scope",
+      "question": "What's the capital of France?",
+      "expected_answer": null,
+      "should_decline": true,
+      "relevant_doc_ids": [],
+      "relevant_chunk_ids": []
+    },
+    {
+      "id": "q009",
+      "category": "out-of-scope",
+      "question": "How do I deploy a Django app to Heroku?",
+      "expected_answer": null,
+      "should_decline": true,
+      "relevant_doc_ids": [],
+      "relevant_chunk_ids": []
+    },
+    {
+      "id": "q010",
+      "category": "malformed",
+      "question": "",
+      "expected_answer": null,
+      "should_decline": true,
+      "relevant_doc_ids": [],
+      "relevant_chunk_ids": [],
+      "_note": "API-layer boundary test only — rejected by Pydantic Field(min_length=1) before reaching the agent. run_eval.py should skip this case or test it separately against the HTTP API, not agent.ask() directly."
+    },
+    {
+      "id": "q011",
+      "category": "easy",
+      "question": "How do I serve static files in FastAPI?",
+      "expected_answer": "Import StaticFiles from fastapi.staticfiles and mount it with app.mount('/static', StaticFiles(directory='static'), name='static'). FastAPI will serve all files in that directory under the /static path prefix.",
+      "should_decline": false,
+      "relevant_doc_ids": ["static-files"],
+      "relevant_chunk_ids": ["static-files_0", "static-files_3", "static-files_8", "static-files_11"]
+    },
+    {
+      "id": "q012",
+      "category": "easy",
+      "question": "How do I read a custom request header in a path operation?",
+      "expected_answer": "Declare a parameter with type annotation and Header() as the default, e.g. user_agent: str | None = Header(default=None). FastAPI converts underscores to hyphens automatically, so user_agent maps to the User-Agent header.",
+      "should_decline": false,
+      "relevant_doc_ids": ["header-params"],
+      "relevant_chunk_ids": ["header-params_0", "header-params_7", "header-params_10", "header-params_34"]
+    },
+    {
+      "id": "q013",
+      "category": "easy",
+      "question": "How do I accept a file upload in FastAPI?",
+      "expected_answer": "Declare a parameter with type UploadFile (or bytes) and File() as the default. UploadFile gives you the filename, content_type, and an async read() method. You must also install python-multipart for form/file parsing to work.",
+      "should_decline": false,
+      "relevant_doc_ids": ["request-files"],
+      "relevant_chunk_ids": ["request-files_1", "request-files_2", "request-files_10", "request-files_13", "request-files_63"]
+    },
+    {
+      "id": "q014",
+      "category": "easy",
+      "question": "How do I group path operations under a tag in the OpenAPI docs?",
+      "expected_answer": "Pass a tags parameter to the path operation decorator, e.g. @app.get('/items', tags=['items']). All operations with the same tag are grouped together in the auto-generated /docs UI.",
+      "should_decline": false,
+      "relevant_doc_ids": ["path-operation-configuration"],
+      "relevant_chunk_ids": ["path-operation-configuration_4", "path-operation-configuration_8", "metadata_28", "metadata_41"]
+    },
+    {
+      "id": "q015",
+      "category": "easy",
+      "question": "How do I add custom middleware that runs on every request in FastAPI?",
+      "expected_answer": "Decorate an async function with @app.middleware('http'). It receives the request and a call_next function — call await call_next(request) to get the response, then return it. You can read/mutate the request before and the response after.",
+      "should_decline": false,
+      "relevant_doc_ids": ["middleware"],
+      "relevant_chunk_ids": ["middleware_0", "middleware_3", "middleware_14"]
+    },
+    {
+      "id": "q016",
+      "category": "hard",
+      "question": "How do I accept both form fields and a file upload in the same endpoint?",
+      "expected_answer": "Declare parameters using Form() for text fields and File() or UploadFile for the file in the same function signature. You cannot mix a JSON body with form data in one request — all fields must come from the form. python-multipart is required.",
+      "should_decline": false,
+      "relevant_doc_ids": ["request-forms-and-files", "request-files"],
+      "relevant_chunk_ids": ["request-forms-and-files_0", "request-forms-and-files_1", "request-forms-and-files_2", "request-forms-and-files_4", "request-forms-and-files_6", "request-forms-and-files_9", "request-files_44"]
+    },
+    {
+      "id": "q017",
+      "category": "hard",
+      "question": "How do I write a test for a FastAPI endpoint, and what client should I use?",
+      "expected_answer": "Import TestClient from fastapi.testclient and pass your app instance to it. Use client.get(), client.post() etc. in your test functions — no running server needed. TestClient wraps httpx and runs requests synchronously, so standard pytest test functions (not async) work fine.",
+      "should_decline": false,
+      "relevant_doc_ids": ["testing", "first-steps"],
+      "relevant_chunk_ids": ["testing_0", "testing_2", "testing_3", "testing_4", "testing_7", "testing_10"]
+    },
+    {
+      "id": "q018",
+      "category": "hard",
+      "question": "What does jsonable_encoder do and when do I need it instead of just returning a Pydantic model directly?",
+      "expected_answer": "jsonable_encoder converts a Pydantic model (or any object) into a JSON-compatible dict — handling types like datetime, UUID, and Decimal that are not natively JSON-serializable. FastAPI calls it internally before sending a response, so you rarely need it explicitly unless you're storing the data somewhere (e.g. a database or an in-memory dict) before returning it.",
+      "should_decline": false,
+      "relevant_doc_ids": ["encoder"],
+      "relevant_chunk_ids": ["encoder_0", "encoder_1", "encoder_3", "encoder_5"]
+    },
+    {
+      "id": "q019",
+      "category": "out-of-scope",
+      "question": "How do I set up a Redis cache in a Python application?",
+      "expected_answer": null,
+      "should_decline": true,
+      "relevant_doc_ids": [],
+      "relevant_chunk_ids": []
+    },
+    {
+      "id": "q020",
+      "category": "out-of-scope",
+      "question": "What is the difference between REST and GraphQL?",
+      "expected_answer": null,
+      "should_decline": true,
+      "relevant_doc_ids": [],
+      "relevant_chunk_ids": []
+    }
+  ]
+}
