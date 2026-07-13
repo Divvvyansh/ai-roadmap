@@ -206,15 +206,13 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Corpus
-corpus/
-
 #chromaDB
 chroma_store/
 
 credentials.json
 token.json
 
-## markdown files
-*.md
+# Personal planning/working notes — not part of the portfolio project
+phase3-rag-support-agent/plan.md
+phase3-rag-support-agent/CLAUDE.md
 
