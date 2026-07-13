@@ -10,7 +10,7 @@ The bet: understanding a pattern by hand-building it once (the Claude tool-use l
 |---|---|---|---|
 | 1 | [Expense Tracker](https://github.com/divvvyansh/ai-roadmap/tree/ph1-expense_tracker/expense%20tracker) — LLM-powered CLI that extracts structured expense data from natural language and answers queries over it | Done | `ph1-expense_tracker` |
 | 2 | [Calendar Agent](./calendar_agent) — natural-language Google Calendar assistant on a hand-rolled Claude tool-use loop | Done | `phase2_agents` |
-| 3 | RAG Support Agent — chunking, Voyage embeddings, ChromaDB retrieval, grounded generation, and an eval harness (recall@k, groundedness, refusal correctness tracked separately) | In progress | `ph3-RAG` |
+| 3 | RAG Support Agent — chunking, Voyage embeddings, ChromaDB retrieval, grounded generation, and an eval harness (recall@k, groundedness, refusal correctness tracked separately) | Done | `ph3-RAG` |
 | 4 | MLOps / AWS — ECS Fargate, Secrets Manager, CloudWatch, IAM | Not started | — |
 | 5 | Multi-agent orchestration | Not started | — |
 | 6 | MCP capstone + framework evaluation (LangChain/LangGraph/n8n) | Not started | — |
