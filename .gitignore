@@ -207,6 +207,10 @@ marimo/_lsp/
 __marimo__/
 .env
 
-# Google OAuth — never commit
+# Google OAuth 
 credentials.json
 token.json
+
+# Personal planning docs — not part of any portfolio project
+ai-roadmap-updated.pdf
+calendar_agent/CLAUDE.md

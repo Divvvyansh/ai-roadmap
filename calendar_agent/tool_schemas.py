@@ -125,7 +125,7 @@ TOOLS = [
     {
         "name": "get_weather",
         "description": (
-            "Fetch the weather forecast for a specific date in Leuven, Belgium using the Open-Meteo API. "
+            "Fetch the weather forecast for a specific date in Paris, France using the Open-Meteo API. "
             "Returns min/max temperature (°C), precipitation (mm), and a plain-English description. "
             "Use this when the user asks about the weather, or when generating a morning briefing."
         ),
