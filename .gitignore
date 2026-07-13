@@ -216,3 +216,12 @@ token.json
 phase3-rag-support-agent/plan.md
 phase3-rag-support-agent/CLAUDE.md
 
+.env
+
+# Google OAuth 
+credentials.json
+token.json
+
+# Personal planning docs — not part of any portfolio project
+ai-roadmap-updated.pdf
+calendar_agent/CLAUDE.md
