@@ -1,0 +1,380 @@
+{
+  "k": 8,
+  "threshold": 0.5,
+  "summary": {
+    "mean_precision": 0.528,
+    "mean_recall": 0.703,
+    "groundedness": 1.0
+  },
+  "results": [
+    {
+      "id": "q001",
+      "category": "easy",
+      "question": "How do I add a background task to a path operation?",
+      "retrieved_ids": [
+        "background-tasks_8",
+        "background-tasks_24"
+      ],
+      "relevant_ids": [
+        "background-tasks_3",
+        "background-tasks_4",
+        "background-tasks_8",
+        "background-tasks_9",
+        "background-tasks_24"
+      ],
+      "precision": 1.0,
+      "recall": 0.4,
+      "answer": "To add a background task to a path operation, you need to:\n\n1. Import and use `BackgroundTasks` as a parameter in your *path operation function*\n2. Inside your path operation function, pass your task function to the *background tasks* object using the `.add_task()` method\n\nFor example, you would call `.add_task()` on the BackgroundTasks object with your task function to register it as a background task.",
+      "grounded": true,
+      "reasoning": "The answer's two main points are supported by the chunks. Point 1 (importing and using BackgroundTasks as a parameter in path operation functions) is supported by Chunk 2. Point 2 (using the .add_task() method inside the path operation function) is supported by Chunk 1, which explicitly states 'pass your task function to the *background tasks* object with the method `.add_task()`'."
+    },
+    {
+      "id": "q002",
+      "category": "easy",
+      "question": "How do I set a custom response status code?",
+      "retrieved_ids": [
+        "response-status-code_49",
+        "response-status-code_10",
+        "response-status-code_0",
+        "response-status-code_6",
+        "path-operation-configuration_0",
+        "response-status-code_8",
+        "response-status-code_41",
+        "response-status-code_4"
+      ],
+      "relevant_ids": [
+        "response-status-code_0",
+        "response-status-code_6"
+      ],
+      "precision": 0.25,
+      "recall": 1.0,
+      "answer": "To set a custom response status code, you use the `status_code` parameter in any of the *path operation* decorators:\n\n* `@app.get()`\n* `@app.post()`\n* `@app.put()`\n* `@app.delete()`\n\nAccording to the chunks provided, you can pass the `status_code` parameter directly to the decorator (not to your path operation function). You have a few options:\n\n1. **Pass an integer directly**: You can pass the HTTP status code as an `int`, like `404`.\n\n2. **Use convenience constants**: You can use the shortcut constants from `fastapi.status` for better readability instead of remembering what each number code represents.\n\n3. **Use IntEnum**: The `status_code` parameter can also receive an `IntEnum`, such as Python's `http.HTTPStatus`.\n\nThis will both return that status code in the response and document it in the OpenAPI schema.",
+      "grounded": true,
+      "reasoning": "All claims in the answer are supported by the provided chunks. The list of decorators (@app.get(), @app.post(), @app.put(), @app.delete()) is from Chunk 3. The note about passing parameters to the decorator (not to the path operation function) is from Chunk 5. Passing an integer directly (like 404) is from Chunk 5. Using convenience constants from fastapi.status is from Chunks 5 and 7. Using IntEnum such as http.HTTPStatus is from Chunk 6. The claim about returning the status code and documenting it in OpenAPI schema is from Chunk 2."
+    },
+    {
+      "id": "q003",
+      "category": "easy",
+      "question": "How do I validate a query parameter with a regex pattern?",
+      "retrieved_ids": [
+        "query-params-str-validations_73",
+        "query-params-str-validations_72",
+        "query-params-str-validations_149",
+        "query-params-str-validations_109"
+      ],
+      "relevant_ids": [
+        "query-params-str-validations_72",
+        "query-params-str-validations_73"
+      ],
+      "precision": 0.5,
+      "recall": 1.0,
+      "answer": "Based on the provided chunks, you can validate a query parameter with a regex pattern by defining a `pattern` that the parameter should match.\n\nAccording to Chunk 2, you can \"define a regular expression `pattern` that the parameter should match\" in FastAPI.\n\nHowever, the chunks provided don't include the specific syntax or code example needed to implement this validation. For complete implementation details, you would need to refer to the full tutorial documentation.",
+      "grounded": true,
+      "reasoning": "The answer claims that you can validate a query parameter with a regex pattern by defining a `pattern` that the parameter should match, and directly quotes Chunk 2 which states 'define a regular expression `pattern` that the parameter should match'. The answer also honestly acknowledges that the specific syntax/code examples are not present in the provided chunks. All claims made in the answer are supported by the chunks."
+    },
+    {
+      "id": "q004",
+      "category": "easy",
+      "question": "How do I add CORS middleware to a FastAPI app?",
+      "retrieved_ids": [
+        "cors_41",
+        "cors_6",
+        "cors_8",
+        "cors_37",
+        "cors_28",
+        "bigger-applications_272",
+        "bigger-applications_197",
+        "bigger-applications_215"
+      ],
+      "relevant_ids": [
+        "cors_8",
+        "cors_12",
+        "cors_13",
+        "cors_41"
+      ],
+      "precision": 0.25,
+      "recall": 0.5,
+      "answer": "Based on the provided chunks, here's how to add CORS middleware to a FastAPI app:\n\n1. **Import `CORSMiddleware`** - Import it from either `fastapi.middleware.cors` or `starlette.middleware.cors`.\n\n2. **Add it as a \"middleware\" to your FastAPI application** - Add the `CORSMiddleware` to your FastAPI app.\n\nOnce added, the middleware will pass requests through as normal but will include appropriate CORS headers on the response.\n\n**Important note:** If you set `allow_credentials` to `True`, you cannot set `allow_origins`, `allow_methods`, or `allow_headers` to `['*']`. Instead, all of them must be explicitly specified.\n\nThe chunks provide the general steps but don't include the specific code example for implementation details.",
+      "grounded": true,
+      "reasoning": "All claims in the answer are supported by the provided chunks. The import from `fastapi.middleware.cors` or `starlette.middleware.cors` is supported by Chunk 1. Adding it as middleware to the FastAPI app is supported by Chunk 3. The middleware passing requests through with CORS headers is supported by Chunk 4. The note about `allow_credentials=True` not being compatible with wildcard settings is supported by Chunk 5. The final statement about chunks not including specific code examples is also accurate based on the chunks provided."
+    },
+    {
+      "id": "q005",
+      "category": "easy",
+      "question": "How do I return a custom error response with HTTPException?",
+      "retrieved_ids": [
+        "handling-errors_3",
+        "handling-errors_65",
+        "handling-errors_20"
+      ],
+      "relevant_ids": [
+        "handling-errors_3",
+        "handling-errors_5",
+        "handling-errors_9",
+        "handling-errors_20"
+      ],
+      "precision": 0.667,
+      "recall": 0.5,
+      "answer": "Based on the provided chunks, I can tell you that to return HTTP responses with errors to the client, you use `HTTPException`. \n\nAdditionally, when raising an `HTTPException`, you can pass any value that can be converted to JSON as the parameter `detail`, not only `str`. This allows you to customize the error response.\n\nThe chunks also mention that you can override the `HTTPException` error handler to further customize the error response behavior.\n\nHowever, the provided chunks don't contain detailed examples or complete instructions on how to implement a custom error response. For more specific implementation details, you would need additional documentation.",
+      "grounded": true,
+      "reasoning": "All claims in the answer are directly supported by the provided chunks. The answer mentions using HTTPException to return HTTP responses with errors (Chunk 1), passing any JSON-convertible value as the 'detail' parameter (Chunk 3), and the ability to override the HTTPException error handler (Chunk 2). The answer also correctly acknowledges that the chunks don't contain complete implementation details, which is accurate given the limited chunk content."
+    },
+    {
+      "id": "q006",
+      "category": "hard",
+      "question": "How do I combine path parameters with numeric validation and a request body model in the same endpoint?",
+      "retrieved_ids": [
+        "path-params-numeric-validations_29",
+        "path-params-numeric-validations_0"
+      ],
+      "relevant_ids": [
+        "path-params-numeric-validations_0",
+        "path-params-numeric-validations_29",
+        "path-params-numeric-validations_39",
+        "body-multiple-params_0",
+        "body-multiple-params_5",
+        "body_62",
+        "body_63"
+      ],
+      "precision": 1.0,
+      "recall": 0.286,
+      "answer": "I don't know.\n\nThe provided chunks explain how to use `Path` for numeric validations on path parameters (such as using `ge=1` for \"greater than or equal\" constraints), but they don't contain information about how to combine path parameters with numeric validation and a request body model in the same endpoint.",
+      "grounded": true,
+      "reasoning": "The answer states 'I don't know' and explains that the chunks explain how to use `Path` for numeric validations (such as `ge=1`) but don't contain information about combining path parameters with numeric validation and a request body model in the same endpoint. This is accurate - the chunks do discuss `Path` and numeric validations like `ge=1`, but there is no mention of request body models in the provided chunks. The answer's characterization of the chunks' content is correct."
+    },
+    {
+      "id": "q007",
+      "category": "hard",
+      "question": "What's the difference between using response_model and just returning a dict, and how do I exclude unset fields from the response?",
+      "retrieved_ids": [
+        "response-model_173",
+        "response-model_129",
+        "response-model_120",
+        "body-updates_21",
+        "response-model_29",
+        "response-model_109",
+        "response-model_59",
+        "body-updates_13"
+      ],
+      "relevant_ids": [
+        "response-model_61",
+        "response-model_69",
+        "response-model_120",
+        "response-model_129",
+        "response-model_173",
+        "body-updates_12",
+        "body-updates_13",
+        "body-updates_21"
+      ],
+      "precision": 0.625,
+      "recall": 0.625,
+      "answer": "Based on the provided chunks, I can answer the second part of your question:\n\n**To exclude unset fields from the response**, you can use the `response_model_exclude_unset` parameter. According to the chunks:\n\nYou can set the *path operation decorator* parameter `response_model_exclude_unset=True` to return only the values explicitly set. This works like `item.model_dump(exclude_unset=True)`, which generates a `dict` with only the data that was set when creating the model, excluding default values.\n\nHowever, regarding the difference between using `response_model` and just returning a dict, the provided chunks don't contain sufficient information to answer that part of your question. I can only tell you that if you want to disable the response model generation, you can set `response_model=None`.",
+      "grounded": true,
+      "reasoning": "The answer's claims about `response_model_exclude_unset=True` are supported by Chunks 1, 3. The comparison to `item.model_dump(exclude_unset=True)` and generating a dict with only explicitly set data is supported by Chunk 8. The mention of `response_model=None` to disable response model generation is supported by Chunk 6. The answer correctly acknowledges that the chunks don't provide sufficient information about the difference between `response_model` and returning a dict, which is accurate given the chunks only contain a partial mention ('with the `response_model`' in Chunk 5 and a brief mention in Chunk 7). All claims made in the answer are traceable to the provided chunks."
+    },
+    {
+      "id": "q011",
+      "category": "easy",
+      "question": "How do I serve static files in FastAPI?",
+      "retrieved_ids": [
+        "static-files_3",
+        "static-files_11",
+        "static-files_0",
+        "static-files_8",
+        "testing_32",
+        "testing_19",
+        "bigger-applications_38",
+        "testing_29"
+      ],
+      "relevant_ids": [
+        "static-files_0",
+        "static-files_3",
+        "static-files_8",
+        "static-files_11"
+      ],
+      "precision": 0.5,
+      "recall": 1.0,
+      "answer": "To serve static files in FastAPI, follow these steps:\n\n1. **Import `StaticFiles`** from `fastapi.staticfiles` (or `starlette.staticfiles`).\n\n2. **Mount a `StaticFiles()` instance** in a specific path in your `main.py` file.\n\nAccording to the chunks, the basic setup involves:\n- The first parameter (e.g., `\"/static\"`) refers to the sub-path where the \"sub-application\" will be mounted. Any path starting with `\"/static\"` will be handled by it.\n- The `directory` parameter (e.g., `directory=\"static\"`) refers to the name of the directory containing your static files.\n- The `name` parameter (e.g., `name=\"static\"`) gives it a name that can be used internally by FastAPI.\n\nYou can use `StaticFiles` the same way you would use the `FastAPI` class.\n\nFor more details and options, check [Starlette's docs about Static Files](https://www.starlette.dev/staticfiles/).",
+      "grounded": true,
+      "reasoning": "All claims in the answer can be traced back to the provided chunks. The import of StaticFiles from fastapi.staticfiles or starlette.staticfiles is supported by Chunks 1 and 3. The mounting of StaticFiles() in main.py is supported by Chunks 3 and 6. The explanation of the '/static' sub-path parameter, 'directory' parameter, and 'name' parameter are all directly from Chunk 4. The claim about using StaticFiles the same way as FastAPI class is from Chunk 7. The reference to Starlette's docs is from Chunk 2."
+    },
+    {
+      "id": "q012",
+      "category": "easy",
+      "question": "How do I read a custom request header in a path operation?",
+      "retrieved_ids": [],
+      "relevant_ids": [
+        "header-params_0",
+        "header-params_7",
+        "header-params_10",
+        "header-params_34"
+      ],
+      "precision": 0.0,
+      "recall": 0.0,
+      "answer": "I don't know.\n\nThe provided chunks don't contain information about how to read a custom request header in a path operation. To get an answer to your question, you would need to provide relevant documentation or examples that cover this topic.",
+      "grounded": true,
+      "reasoning": "The answer states 'I don't know' and acknowledges that the provided chunks don't contain relevant information. Since no chunks were provided, this is an accurate and honest response. There are no false claims made in the answer."
+    },
+    {
+      "id": "q013",
+      "category": "easy",
+      "question": "How do I accept a file upload in FastAPI?",
+      "retrieved_ids": [
+        "request-files_10",
+        "request-files_53",
+        "request-files_2",
+        "request-forms-and-files_4",
+        "request-files_41",
+        "request-files_63",
+        "request-files_36",
+        "request-files_1"
+      ],
+      "relevant_ids": [
+        "request-files_1",
+        "request-files_2",
+        "request-files_10",
+        "request-files_13",
+        "request-files_63"
+      ],
+      "precision": 0.5,
+      "recall": 0.8,
+      "answer": "To accept a file upload in FastAPI, follow these steps:\n\n1. **Install python-multipart**: First, you need to install the `python-multipart` package since uploaded files are sent as \"form data\":\n   ```\n   pip install python-multipart\n   ```\n\n2. **Import File and UploadFile**: Import `File` and `UploadFile` from `fastapi`:\n   ```python\n   from fastapi import File, UploadFile\n   ```\n\n3. **Declare file parameters**: Use `File`, `bytes`, and `UploadFile` to declare files to be uploaded in the request, sent as form data. You can declare the type of your path operation function parameter as either:\n   - `bytes` - FastAPI will read the file for you and you will receive the contents as `bytes`\n   - `UploadFile` - FastAPI's `UploadFile` class (which inherits from Starlette's `UploadFile`)\n   - A list of either `bytes` or `UploadFile` for multiple files\n\nYou can also declare some files as `bytes` and some as `UploadFile` in the same endpoint, along with other form fields if needed.",
+      "grounded": true,
+      "reasoning": "All claims in the answer are supported by the provided chunks. The requirement to install python-multipart is covered in Chunk 8. The import of File and UploadFile is covered in Chunk 3. The use of File, bytes, and UploadFile for declaring file parameters is covered in Chunks 1, 5, and 6. The support for bytes and UploadFile types is covered in Chunks 1 and 2. Multiple files using lists is covered in Chunk 2. Mixing bytes and UploadFile with other form fields is covered in Chunk 4. The inheritance from Starlette's UploadFile is covered in Chunk 7."
+    },
+    {
+      "id": "q014",
+      "category": "easy",
+      "question": "How do I group path operations under a tag in the OpenAPI docs?",
+      "retrieved_ids": [
+        "metadata_28",
+        "bigger-applications_140",
+        "metadata_41",
+        "bigger-applications_143",
+        "path-operation-configuration_4",
+        "bigger-applications_74",
+        "bigger-applications_139",
+        "metadata_44"
+      ],
+      "relevant_ids": [
+        "path-operation-configuration_4",
+        "path-operation-configuration_8",
+        "metadata_28",
+        "metadata_41"
+      ],
+      "precision": 0.375,
+      "recall": 0.75,
+      "answer": "To group path operations under a tag in the OpenAPI docs, you use the `tags` parameter with your *path operation* (and `APIRouter`s) to assign them to different tags.\n\nAccording to the chunks provided:\n\n1. You can **pass the parameter `tags` with a `list` of `str`** (commonly just one `str`) to your path operation.\n\n2. You can also **add a list of `tags` to an `APIRouter`**, which will be applied to all the *path operations* included in that router, so you don't have to add them to each individual path operation.\n\n3. Additionally, you can **add metadata for the different tags** used to group your path operations with the parameter `openapi_tags`.\n\nThis way, path operations with the same tags will be grouped together in the OpenAPI documentation.",
+      "grounded": true,
+      "reasoning": "All claims in the answer are supported by the provided chunks. The claim about using `tags` parameter with path operations and APIRouters is supported by Chunk 3. The claim about passing `tags` with a `list` of `str` is supported by Chunk 5. The claim about adding a list of `tags` to an `APIRouter` is supported by Chunks 6 and 7. The claim about adding metadata for tags using `openapi_tags` is supported by Chunk 1. The claim about grouping in OpenAPI docs is implied by Chunks 3 and 5."
+    },
+    {
+      "id": "q015",
+      "category": "easy",
+      "question": "How do I add custom middleware that runs on every request in FastAPI?",
+      "retrieved_ids": [
+        "cors_8",
+        "middleware_0",
+        "middleware_3",
+        "middleware_24",
+        "bigger-applications_272",
+        "middleware_22",
+        "middleware_14",
+        "cors_41"
+      ],
+      "relevant_ids": [
+        "middleware_0",
+        "middleware_3",
+        "middleware_14"
+      ],
+      "precision": 0.375,
+      "recall": 1.0,
+      "answer": "To add custom middleware that runs on every request in FastAPI, you can use the `@app.middleware(\"http\")` decorator on top of a function.\n\nAccording to the chunks provided:\n\n1. **Create the middleware function** using the `@app.middleware(\"http\")` decorator. The middleware function receives:\n   - The `request`\n   - A function `call_next` that will receive the `request` as a parameter\n\n2. **How it works**: The middleware intercepts every request that comes to your application before it is processed by any specific path operation. You can then do something to that request or run any needed code, and then pass the request to be processed by the rest of the application.\n\nAlternatively, you can also **add middleware using `app.add_middleware()`** method, as shown in the chunks.\n\nThe middleware will run with the request before any path operation receives it, allowing you to execute code on every request in your FastAPI application.",
+      "grounded": true,
+      "reasoning": "All claims in the answer are supported by the provided chunks. The use of `@app.middleware('http')` decorator is confirmed in Chunk 3. The middleware receiving `request` and `call_next` function is confirmed in Chunk 3. How middleware intercepts requests before path operations is confirmed in Chunk 2 and Chunk 7. The `app.add_middleware()` alternative is confirmed in Chunk 4 and Chunk 6. The statement about middleware running before path operations is confirmed in Chunks 2 and 7."
+    },
+    {
+      "id": "q016",
+      "category": "hard",
+      "question": "How do I accept both form fields and a file upload in the same endpoint?",
+      "retrieved_ids": [
+        "request-forms-and-files_4",
+        "request-forms-and-files_9",
+        "request-forms-and-files_0",
+        "request-files_63",
+        "request-files_44",
+        "request-forms-and-files_6",
+        "request-forms-and-files_2",
+        "request-files_41"
+      ],
+      "relevant_ids": [
+        "request-forms-and-files_0",
+        "request-forms-and-files_1",
+        "request-forms-and-files_2",
+        "request-forms-and-files_4",
+        "request-forms-and-files_6",
+        "request-forms-and-files_9",
+        "request-files_44"
+      ],
+      "precision": 0.75,
+      "recall": 0.857,
+      "answer": "To accept both form fields and a file upload in the same endpoint, use `File` and `Form` together.\n\nAccording to the provided chunks:\n\n1. **Use `File` and `Form` together** - \"Use `File` and `Form` together when you need to receive data and files in the same request.\"\n\n2. **Declare them as parameters** - \"You can declare multiple `File` and `Form` parameters in a *path operation*\" the same way you would for `Body` or `Query`.\n\n3. **Files and form fields will be uploaded as form data** - \"The files and form fields will be uploaded as form data and you will receive the files and form fields. And you can declare some of the files as `bytes` and some as `UploadFile`.\"\n\n4. **Important limitation** - You cannot declare `Body` fields that expect JSON in the same endpoint, since the request will be encoded as `multipart/form-data` instead of `application/json`.",
+      "grounded": true,
+      "reasoning": "All claims in the answer are supported by the provided chunks. The use of `File` and `Form` together is confirmed in chunks 2 and 3. The declaration as parameters similar to `Body` or `Query` is confirmed in chunk 7. The statement about files and form fields being uploaded as form data is confirmed in chunk 1. The limitation about not being able to declare JSON `Body` fields in the same endpoint is confirmed in chunks 5 and 6."
+    },
+    {
+      "id": "q017",
+      "category": "hard",
+      "question": "How do I write a test for a FastAPI endpoint, and what client should I use?",
+      "retrieved_ids": [
+        "testing_0",
+        "testing_3",
+        "testing_10",
+        "testing_4",
+        "testing_46",
+        "testing_2",
+        "body-multiple-params_62",
+        "body-multiple-params_31"
+      ],
+      "relevant_ids": [
+        "testing_0",
+        "testing_2",
+        "testing_3",
+        "testing_4",
+        "testing_7",
+        "testing_10"
+      ],
+      "precision": 0.625,
+      "recall": 0.833,
+      "answer": "To write a test for a FastAPI endpoint, you should use the `TestClient` from FastAPI. Here's how:\n\n1. **Install the required dependency**: First, install `httpx` by running:\n   ```console\n   $ pip install httpx\n   ```\n\n2. **Import and create TestClient**: Import `TestClient` and pass your FastAPI application to it:\n   ```python\n   from fastapi.testclient import TestClient\n   ```\n   (You can also import it from `starlette.testclient`)\n\n3. **Write test functions**: Create functions with names that start with `test_` (standard pytest convention).\n\n4. **Use TestClient**: Use the `TestClient` object the same way as you do with `httpx` to make requests to your application.\n\n5. **Write assertions**: Write simple `assert` statements with standard Python expressions to check the responses.\n\n**Important note**: The `TestClient` receives data that can be converted to JSON, not Pydantic models directly. If you have a Pydantic model in your test and want to send its data to the application, you can use the `jsonable_encoder` to convert it first.\n\nTesting FastAPI applications is easy and enjoyable thanks to Starlette's TestClient, which is based on HTTPX and designed similarly to the familiar Requests library.",
+      "grounded": true,
+      "reasoning": "All claims in the answer can be traced back to the provided chunks. The installation of httpx is supported by Chunk 6. The import of TestClient and creating it by passing the FastAPI app is supported by Chunk 2. The note about importing from starlette.testclient is supported by Chunk 3. Writing test functions starting with 'test_' is supported by Chunk 2. Using TestClient like httpx is supported by Chunk 4. Writing assert statements is supported by Chunk 4. The note about TestClient receiving JSON-compatible data and using jsonable_encoder for Pydantic models is supported by Chunk 5. The statement about testing being easy and enjoyable based on Starlette's TestClient based on HTTPX designed similarly to Requests is supported by Chunk 1."
+    },
+    {
+      "id": "q018",
+      "category": "hard",
+      "question": "What does jsonable_encoder do and when do I need it instead of just returning a Pydantic model directly?",
+      "retrieved_ids": [
+        "encoder_1",
+        "encoder_0",
+        "encoder_5",
+        "testing_46",
+        "server-sent-events_24",
+        "stream-json-lines_39",
+        "encoder_3",
+        "body-updates_24"
+      ],
+      "relevant_ids": [
+        "encoder_0",
+        "encoder_1",
+        "encoder_3",
+        "encoder_5"
+      ],
+      "precision": 0.5,
+      "recall": 1.0,
+      "answer": "Based on the provided chunks, `jsonable_encoder` converts data types (like Pydantic models) into JSON-compatible formats (like `dict`, `list`, etc.).\n\nYou need it instead of returning a Pydantic model directly when:\n\n1. **Database storage**: You need to store data in a database that only accepts JSON-compatible data. For example, databases don't receive Pydantic model objects (with attributes), only `dict` objects.\n\n2. **Non-JSON compatible types**: You have data types that aren't JSON compatible, such as `datetime` objects, which need to be converted to strings in ISO format.\n\nAs stated in the chunks: \"The result of calling it is something that can be encoded with the Python standard `json.dumps()`. It doesn't return a large `str` containing the data in JSON format (as a string). It returns a Python standard data structure (e.g. a `dict`) with values and sub-values that are all compatible with JSON.\"\n\nAdditionally, `jsonable_encoder` is used internally by **FastAPI** itself to convert data for serialization and transmission.",
+      "grounded": true,
+      "reasoning": "All claims in the answer are supported by the provided chunks. The description of what jsonable_encoder does (converts data types like Pydantic models to JSON-compatible formats) is supported by Chunks 1, 2, and 7. The use case for database storage is supported by Chunks 2 and 8. The non-JSON compatible types like datetime being converted to ISO format strings is supported by Chunk 2. The quoted text about json.dumps() and returning a Python standard data structure is directly from Chunk 7. The mention of FastAPI using it internally is supported by Chunks 3, 5, and 6."
+    }
+  ]
+}
