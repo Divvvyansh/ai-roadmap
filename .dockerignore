@@ -5,7 +5,6 @@
 *.json
 
 # never-should-ship, per your Step 1 chroma_store decision
-phase3-rag-support-agent/chroma_store/*
 .venv/*
 .git/
 
