@@ -31,6 +31,12 @@ Each phase lives on its own branch while in progress; finished phases get merged
 - Designing clean error states instead of raw stack traces
 - First contact with the Claude API for unstructured-to-structured parsing
 
+**Resources:**
+
+- Anthropic Academy — *Building with the Claude API* (Skilljar, ~8h) 
+- [FastAPI docs — Tutorial](https://fastapi.tiangolo.com/tutorial/) — request bodies, response models, error handling
+- [Gunicorn docs — Design & Deployment](https://docs.gunicorn.org/en/stable/design.html) 
+
 ### Phase 2 — Natural Language Calendar Agent
 
 **Agentic tool loops, built with direct Anthropic API calls — no LangChain.**
@@ -41,6 +47,12 @@ Each phase lives on its own branch while in progress; finished phases get merged
 - Correct placement of human-in-the-loop confirmation (system prompt *and* tool description)
 - Safe conversation-history trimming — avoiding the 400 Bad Request from orphaned `tool_result` blocks
 
+**Resources:**
+
+- [Anthropic docs — Tool use overview](https://docs.claude.com/en/docs/build-with-claude/tool-use) 
+- [Claude Cookbook — Tool use & function calling](https://github.com/anthropics/claude-cookbooks) 
+- [Google Calendar API — Python quickstart](https://developers.google.com/calendar/api/quickstart/python) — OAuth consent screen, scopes, token refresh
+
 ### Phase 3 — AI Support Agent: RAG + Eval Harness
 
 **Vector databases introduced contextually, exactly when the project needs them.**
@@ -49,6 +61,13 @@ Each phase lives on its own branch while in progress; finished phases get merged
 - ChromaDB locally → similarity search → relevance thresholds
 - Building an eval harness: retrieval precision/recall, groundedness checks, hallucination detection
 - Where RAG grounding constraints belong — the same "close to the decision point" principle as tool descriptions
+
+**Resources:**
+
+- [Claude Cookbook — RAG guide](https://github.com/anthropics/claude-cookbooks) (`retrieval_augmented_generation/guide.ipynb`) 
+- [Claude Cookbook — Contextual retrieval guide](https://platform.claude.com/cookbook/capabilities-contextual-embeddings-guide) 
+- [ChromaDB docs — Getting Started](https://docs.trychroma.com/) 
+- Anthropic Academy — *AI Fluency / Evaluations track* (Skilljar)
 
 ### Phase 4 — MLOps Sprint
 
@@ -59,6 +78,12 @@ Each phase lives on its own branch while in progress; finished phases get merged
 - Logging tool calls and retrieval results for post-hoc debugging
 - What "production-ready" actually requires beyond a working notebook
 
+**Resources:**
+
+- [Docker docs — Get Started](https://docs.docker.com/get-started/) 
+- [Anthropic docs — Monitoring & usage](https://docs.claude.com/) 
+- Prometheus + Grafana — *Get Started guides* (community) 
+
 ### Phase 4.5 — Multi-Agent Orchestration
 
 **Sub-agent delegation and context management — via direct API calls, before any framework.**
@@ -67,6 +92,12 @@ Each phase lives on its own branch while in progress; finished phases get merged
 - Context isolation vs. sharing: does a sub-agent get full parent history, or a scoped summary?
 - Result surfacing: collapsing a sub-agent's internal multi-turn loop into a single `tool_result` block
 - Failure propagation: what the orchestrator sees when a sub-agent errors several levels deep
+
+**Resources:**
+
+- [Claude Cookbook — Sub-agents notebook](https://github.com/anthropics/claude-cookbooks)
+- [Claude Code docs — Subagents](https://docs.claude.com/en/docs/claude-code/sub-agents)
+- Anthropic Academy — *Subagents course* (Skilljar)
 
 ### Phase 5 — MCP Capstone: Life Admin Hub
 
@@ -77,6 +108,12 @@ Each phase lives on its own branch while in progress; finished phases get merged
 - Applying Phase 4.5's orchestration patterns to a real multi-project system
 - End-to-end integration testing across services with different deployment states
 
+**Resources:**
+
+- [Model Context Protocol — Official docs](https://modelcontextprotocol.io/)
+- [Anthropic docs — MCP quickstart](https://docs.claude.com/en/docs/claude-code/mcp) — connects an MCP server end to end
+- [Claude Cookbook — MCP examples](https://github.com/anthropics/claude-cookbooks) — check the `mcp/` directory for server examples
+
 ### Phase 6 — Frameworks: LangGraph & n8n
 
 **Now that the mechanics are second nature, learn the abstractions that wrap them.**
@@ -85,6 +122,13 @@ Each phase lives on its own branch while in progress; finished phases get merged
 - Recognizing what LangGraph buys you (state persistence, visualization, checkpointing) versus what it hides
 - n8n as a visual automation layer — connecting existing agents into workflows without glue code
 - Judging, case by case, when a framework is worth the abstraction cost in real projects
+
+**Resources:**
+
+- [LangGraph docs — Tutorials](https://langchain-ai.github.io/langgraph/) 
+- [LangGraph — Multi-agent concepts](https://langchain-ai.github.io/langgraph/)
+- [n8n docs — Workflow basics](https://docs.n8n.io/) — nodes, triggers, and the HTTP Request node
+- [n8n — AI Agent node docs](https://docs.n8n.io/) 
 
 ## Guiding principles
 

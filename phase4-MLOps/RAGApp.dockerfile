@@ -6,7 +6,7 @@
 
 # 1. Base image — pick a slim Python image matching the version you've been
 #    developing against (check your venv: `python --version`).
-FROM python:3.9.6-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 RUN mkdir -p chroma_store
