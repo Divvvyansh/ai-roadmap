@@ -4,11 +4,15 @@ __pycache__/
 *.pyc
 *.db
 *.json
+*.jsonl
 *.py[codz]
 *$py.class
 
 # C extensions
 *.so
+
+# markdown files
+*.md
 
 # Distribution / packaging
 .Python
