@@ -111,8 +111,8 @@ Each phase lives on its own branch while in progress; finished phases get merged
 **Resources:**
 
 - [Model Context Protocol — Official docs](https://modelcontextprotocol.io/)
-- [Anthropic docs — MCP quickstart](https://docs.claude.com/en/docs/claude-code/mcp) — connects an MCP server end to end
-- [Claude Cookbook — MCP examples](https://github.com/anthropics/claude-cookbooks) — check the `mcp/` directory for server examples
+- [Anthropic docs — MCP quickstart](https://docs.claude.com/en/docs/claude-code/mcp) 
+- [Claude Cookbook — MCP examples](https://github.com/anthropics/claude-cookbooks) 
 
 ### Phase 6 — Frameworks: LangGraph & n8n
 

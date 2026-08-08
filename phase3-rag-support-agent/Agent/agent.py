@@ -2,12 +2,15 @@
 RAG agent: Claude + a search_docs tool backed by retriever.retrieve().
 """
 import sys
-import os
+import itertools
 import json
+import logging, time
 from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "RAG"))
+
+logger = logging.getLogger(__name__)
 
 import anthropic
 from dotenv import load_dotenv
@@ -54,13 +57,24 @@ def top_doc_ids(chunks_used: list[list[Chunk]], n: int = 2) -> list[str]:
                 seen_chunks[chunk.id] = chunk
             pass
 
-    doc_counts = Counter()  # TODO: doc_id -> count of distinct chunks
+    doc_counts = Counter()  
     for chunk in seen_chunks.values():
         if chunk.doc_id:
             doc_counts[chunk.doc_id] += 1
         pass
 
     return [doc_id for doc_id, count in doc_counts.most_common(n)]
+
+
+def log_request(question, docs, chunks_used, retrieval_latency_ms, generation_latency_ms, level=logging.INFO, **extra):
+    logger.log(level, json.dumps({
+        "question": question,
+        "docs_used": docs,
+        "chunks_used": list(chunk.id for chunk in itertools.chain.from_iterable(chunks_used)),
+        "retrieval_latency_ms": retrieval_latency_ms,
+        "generation_latency_ms": generation_latency_ms,
+        **extra,
+    }))
 
 
 def ask(question: str) -> dict:
@@ -71,11 +85,16 @@ def ask(question: str) -> dict:
     messages = [{"role": "user", "content": question}]
     chunks_used = []
     first_turn = True
+    retrieval_latency_ms = 0.0
+    generation_latency_ms = 0.0
 
     while True:
         extra = {}
         if first_turn:
             extra["tool_choice"] = {"type": "tool", "name": "search_docs"}
+
+        start_generation = time.monotonic()
+        
         response = client.messages.create(
             model=MODEL,
             system=SYSTEM_PROMPT,
@@ -86,7 +105,6 @@ def ask(question: str) -> dict:
         )
 
         first_turn = False
-            
 
         messages.append({"role": "assistant", "content": response.content})
 
@@ -95,6 +113,18 @@ def ask(question: str) -> dict:
                 block.text for block in response.content if hasattr(block, "text")
             )
             docs = top_doc_ids(chunks_used)
+            stop_generation = time.monotonic()
+            generation_latency_ms += (stop_generation - start_generation) * 1000
+            status = {"status": "successfully retrieved and end turn"}
+            log_request(
+                question,
+                docs,
+                chunks_used,
+                retrieval_latency_ms,
+                generation_latency_ms,
+                level=logging.INFO,
+                **status
+            )
             return {"answer": text, "docs_used": docs, "chunks_used": chunks_used}
         
         if response.stop_reason == "tool_use":
@@ -104,6 +134,7 @@ def ask(question: str) -> dict:
                 if block.type != "tool_use":
                     continue
 
+                start_retrieval = time.monotonic()
                 retreived, chunks = run_tool(block.name, block.input)
 
                 tool_result.append(
@@ -115,13 +146,43 @@ def ask(question: str) -> dict:
                 )
                 chunks_used.append(chunks)
                 turn_chunks.append(chunks)
+                stop_retrieval = time.monotonic()
+                retrieval_latency_ms += (stop_retrieval - start_retrieval) * 1000
 
             if all(c == [] for c in turn_chunks):
+                stop_generation = time.monotonic()
+                generation_latency_ms += (stop_generation - start_generation) * 1000
+                status = {"status": "no results found in the documentation"}
+                log_request(
+                    question,
+                    [],
+                    chunks_used,
+                    retrieval_latency_ms,
+                    generation_latency_ms,
+                    level=logging.INFO,
+                    **status
+                )   
                 return {"answer": "No results found in the documentation.", "docs_used": [], "chunks_used": chunks_used}
+            
+            stop_generation = time.monotonic()
+            generation_latency_ms += (stop_generation - start_generation) * 1000
+            start_generation = time.monotonic()
 
             messages.append({"role": "user", "content": tool_result})
             continue
 
+        stop_generation = time.monotonic()
+        generation_latency_ms += (stop_generation - start_generation) * 1000
+        status = {"status": "unexpected stop reason"}
+        log_request(
+            question,
+            [],
+            chunks_used,
+            retrieval_latency_ms,
+            generation_latency_ms,
+            level=logging.WARNING,
+            **status
+        )
         return {"answer": "", "docs_used": [], "chunks_used": chunks_used}
 
 

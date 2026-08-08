@@ -1,9 +1,9 @@
 
-import json, sys, argparse
+import json, argparse
 from pathlib import Path
+from datetime import datetime, timezone
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from RAG.retriever import retrieve
+from deployed_client import call_ask_endpoint
 
 DATASET_PATH = Path(__file__).parent / "dataset.json"
 RESULTS_DIR  = Path(__file__).parent / "results"
@@ -20,7 +20,6 @@ def precision_at_k(retrieved_ids: list[str], relevant_ids: list[str]) -> float:
 
 
 def recall_at_k(retrieved_ids: list[str], relevant_ids: list[str]) -> float:
-
     total = len(relevant_ids)
     retrieved_relevant = 0
     for id in relevant_ids:
@@ -30,16 +29,16 @@ def recall_at_k(retrieved_ids: list[str], relevant_ids: list[str]) -> float:
     return recall
 
 
-def run_eval(k: int = 5, threshold: float = 0.5) -> dict:
+def run_eval(base_url: str) -> dict:
     data = json.loads(DATASET_PATH.read_text())
     results = []
 
     for q in data["questions"]:
         if q["category"] == "out-of-scope" or q["category"] == "malformed":
-            continue  # skip out-of-scope questions
-
-        chunks = retrieve(q["question"], k=k, threshold=threshold)
-        retrieved_ids = [c.id for c in chunks]
+            continue  
+        
+        response = call_ask_endpoint(q["question"], base_url)
+        retrieved_ids = response.get("chunks_used", []) 
 
         p = precision_at_k(retrieved_ids, q["relevant_chunk_ids"])
         r = recall_at_k(retrieved_ids, q["relevant_chunk_ids"])
@@ -54,12 +53,12 @@ def run_eval(k: int = 5, threshold: float = 0.5) -> dict:
             "recall": round(r, 3),
         })
 
-    mean_p = sum(r["precision"] for r in results) / len(results)  
-    mean_r = sum(r["recall"] for r in results) / len(results)  
+    mean_p = sum(r["precision"] for r in results) / len(results)
+    mean_r = sum(r["recall"] for r in results) / len(results)
 
     return {
-        "k": k,
-        "threshold": threshold,
+        "identifier": f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+        "base_url": base_url,
         "summary": {"mean_precision": round(mean_p, 3), "mean_recall": round(mean_r, 3)},
         "results": results,
     }
@@ -67,24 +66,19 @@ def run_eval(k: int = 5, threshold: float = 0.5) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--k", type=int, default=5)
-    parser.add_argument("--threshold", type=float, default=0.5)
+    parser.add_argument("--base-url", required=True)
     args = parser.parse_args()
 
     RESULTS_DIR.mkdir(exist_ok=True)
-    output = run_eval(k=args.k, threshold=args.threshold)
+    output = run_eval(base_url=args.base_url)
 
-    print(f"\nk={output['k']}  threshold={output['threshold']}")
-    print(f"{'id':<6} {'cat':<12} {'prec':>6} {'recall':>7}  retrieved")
+    print(f"Evaluated {len(output['results'])} at ={output.get('identifier')}")
+    print(f"Mean precision: {output['summary']['mean_precision']:.3f}, Mean recall: {output['summary']['mean_recall']:.3f}")
     print("-" * 70)
     for r in output["results"]:
         print(f"{r['id']:<6} {r['category']:<12} {r['precision']:>6.3f} {r['recall']:>7.3f}  {r['retrieved_ids']}")
 
-    s = output["summary"]
-    print("-" * 70)
-    print(f"{'MEAN':<19} {s['mean_precision']:>6.3f} {s['mean_recall']:>7.3f}")
-
-    out_path = RESULTS_DIR / f"eval_k{args.k}_t{int(args.threshold*100)}.json"
+    out_path = RESULTS_DIR / f"deployed_eval_{output['identifier']}.json"
 
     out_path.write_text(json.dumps(output, indent=2))
     print(f"\nSaved → {out_path}")
