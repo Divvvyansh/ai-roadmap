@@ -1,0 +1,13 @@
+
+
+# secrets 
+*.env
+*.json
+
+# never-should-ship, per your Step 1 chroma_store decision
+.venv/*
+.git/
+
+# python cruft
+__pycache__/
+*.pyc
