@@ -216,6 +216,7 @@ __marimo__/
 
 #chromaDB
 chroma_store/
+corpus/
 
 credentials.json
 token.json
@@ -233,3 +234,4 @@ token.json
 # Personal planning docs — not part of any portfolio project
 ai-roadmap-updated.pdf
 calendar_agent/CLAUDE.md
+annotate.py
