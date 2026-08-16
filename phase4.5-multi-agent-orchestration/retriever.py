@@ -21,9 +21,6 @@ load_dotenv()
 CHROMA_PATH = Path(__file__).parent / "chroma_store"
 COLLECTION_NAME = "pydantic_docs"
 
-# Voyage's free tier is 3 req/min, and the eval sweep re-asks the same 19
-# questions against every (collection, k, threshold) combination. Cache query
-# embeddings on disk so a sweep costs 19 API calls instead of several hundred.
 QUERY_CACHE_PATH = Path(__file__).parent / "eval" / ".query_cache.json"
 
 vo = voyageai.Client()
@@ -77,23 +74,6 @@ class Chunk:
 
 def retrieve(query: str, k: int = 5, threshold: float = 0.5,
              collection_name: str = COLLECTION_NAME) -> list[Chunk]:
-    # 1. get the collection
-
-    # 2. embed the query — wrap in a retry loop for RateLimitError, same
-    #    backoff shape as ingest_docs.py. Note vo.embed takes a *list* and
-    #    returns .embeddings, so you want element [0].
-
-    # 3. collection.query(query_embeddings=[...], n_results=k,
-    #    include=["documents", "metadatas", "distances"])
-
-    # 4. zip documents/metadatas/distances/ids together and build Chunks,
-    #    dropping anything below `threshold`.
-    #
-    #    Chroma gives you a *distance*, and you're storing with
-    #    {"hnsw:space": "cosine"}. Your threshold is expressed as a
-    #    similarity. What's the conversion, and — worth pausing on —
-    #    which direction does the comparison go? Getting this inverted
-    #    returns the k *worst* matches without raising anything.
 
     collection = chroma_client.get_collection(collection_name)
     query_embedding = embed_query(query)
@@ -122,7 +102,7 @@ def main():
     test_queries = [
         "How do I stop a model from accepting extra fields?",
         "before validator vs after validator?",
-        "What's the capital of France?",  # out-of-scope, should return little/nothing
+        "What's the capital of France?",  
     ]
     for query in test_queries:
         print(f"\nQuery: {query!r}")
