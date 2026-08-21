@@ -64,3 +64,58 @@ SEARCH_DOCS_TOOL = {
         "required": ["query"],
     },
 }
+
+## orchestration sub-agents
+
+DELEGATE_TO_TRIAGE = {
+    "name": "delegate_to_triage_agent",
+    "description": (
+        "Invokes a triage agent that has access to a corpus of all closed issues in the pydantic repository. "
+        "Its task is to determine if the issue described in the input task string describes a duplicate of an existing issue in the corpus. "
+        "The agent is blind to any information about the pydantic documentation and will only search in its issues corpus anytime it is used. "
+        "The agent always starts from a fresh message list and has no knowledge of the context of anything not sent to it explicitly. "
+        "A good task string should be an issue report or a question about the repository. "
+        "A good task string must include title, description of the problem, and the example code or traceback — copied verbatim from the issue, not summarized. "
+        "The agent will return a prose string that includes the result of the search, including 'no duplicate found' if no duplicates are found. This is a successful result, not a failure. "
+        "If a duplicate is found, the agent response string will consist of 'Duplicate found' followed by information about the issue that the question duplicates. "
+        "If no duplicate is found, the agent response string will consist of 'No duplicate found' followed by a list of the most similar issues the agent found and then rejected as not duplicates and their similarity scores. "
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "task": {
+                "type": "string",
+                "description": (
+                    "A bug report or a question about the pydantic repository in the way an issue report would be written. "
+                    "Do not add questions in the beginning or end like 'is this a duplicate?' "
+                ),
+            }
+        },
+        "required": ["task"],
+    },
+}
+
+DELEGATE_TO_DOCS = {
+    "name": "delegate_to_docs_agent",
+    "description": (
+        "Invokes a docs agent that has access to a corpus of the documentation of the pydantic repository. "
+        "Its task is to answer a query about the pydantic repository by looking up information from the documentation. "
+        "The agent is blind to any information about the pydantic issues list and will only search in its documentation corpus anytime it is used. "
+        "The agent always starts from a fresh message list and has no knowledge of the context of anything not sent to it explicitly. "
+        "A good task string should be a query about pydantic, its behaviour, usage or use case along with the specific setting/type/nesting the issue involves, not just the general topic. "
+        "The agent will return a prose string containing either the answer to the query or 'the documentation does not cover this.' "
+        "If the agent does not find the answer to the question in the documentation, it will clearly state so and provide some doc_ids that it retrieved and rejected as irrelevant. This is an acceptable response and a successful result. "
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "task": {
+                "type": "string",
+                "description": (
+                    "A query about pydantic's behaviour or usage. "
+                ),
+            }
+        },
+        "required": ["task"],
+    },
+}
