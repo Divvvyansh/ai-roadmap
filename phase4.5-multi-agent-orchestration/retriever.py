@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import hashlib
 import json
+import threading
 import time
 
 import chromadb
@@ -30,6 +31,7 @@ vo = voyageai.Client()
 chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
 
 _query_cache: dict[str, list[float]] | None = None
+_query_cache_lock = threading.Lock()
 
 
 def _cache_key(query: str) -> str:
@@ -39,15 +41,16 @@ def _cache_key(query: str) -> str:
 def embed_query(query: str, use_cache: bool = True) -> list[float]:
     """Embed a query with input_type='query', memoised on disk."""
     global _query_cache
-    if _query_cache is None:
-        try:
-            _query_cache = json.loads(QUERY_CACHE_PATH.read_text())
-        except (FileNotFoundError, json.JSONDecodeError):
-            _query_cache = {}
-
     key = _cache_key(query)
-    if use_cache and key in _query_cache:
-        return _query_cache[key]
+
+    with _query_cache_lock:
+        if _query_cache is None:
+            try:
+                _query_cache = json.loads(QUERY_CACHE_PATH.read_text())
+            except (FileNotFoundError, json.JSONDecodeError):
+                _query_cache = {}
+        if use_cache and key in _query_cache:
+            return _query_cache[key]
 
     for attempt in range(3):
         try:
@@ -60,9 +63,10 @@ def embed_query(query: str, use_cache: bool = True) -> list[float]:
     else:
         raise RetryableToolError("Voyage embedding failed after 3 rate-limit retries. Try again later.")
 
-    _query_cache[key] = embedding
-    QUERY_CACHE_PATH.parent.mkdir(exist_ok=True)
-    QUERY_CACHE_PATH.write_text(json.dumps(_query_cache))
+    with _query_cache_lock:
+        _query_cache[key] = embedding
+        QUERY_CACHE_PATH.parent.mkdir(exist_ok=True)
+        QUERY_CACHE_PATH.write_text(json.dumps(_query_cache))
     return embedding
 
 

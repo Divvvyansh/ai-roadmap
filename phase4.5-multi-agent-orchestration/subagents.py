@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 import time
 from pathlib import Path
 
@@ -40,6 +41,7 @@ vo = voyageai.Client()
 chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
 
 _issue_cache: dict[str, list[float]] | None = None
+_issue_cache_lock = threading.Lock()
 
 # ---------------------------------------------------------------- issue search
 
@@ -48,15 +50,16 @@ def embed_issue_text(text: str, use_cache: bool = True) -> list[float]:
     Embed issue text for searching the issue collection.
     """
     global _issue_cache
-    if _issue_cache is None:
-        try:
-            _issue_cache = json.loads(ISSUE_CACHE_PATH.read_text())
-        except (FileNotFoundError, json.JSONDecodeError):
-            _issue_cache = {}
-
     key = hashlib.sha256(text.encode()).hexdigest()[:16]
-    if use_cache and key in _issue_cache:
-        return _issue_cache[key]
+
+    with _issue_cache_lock:
+        if _issue_cache is None:
+            try:
+                _issue_cache = json.loads(ISSUE_CACHE_PATH.read_text())
+            except (FileNotFoundError, json.JSONDecodeError):
+                _issue_cache = {}
+        if use_cache and key in _issue_cache:
+            return _issue_cache[key]
 
     for attempt in range(3):
         try:
@@ -70,9 +73,10 @@ def embed_issue_text(text: str, use_cache: bool = True) -> list[float]:
     else:
         raise RetryableToolError("Voyage embedding failed after 3 rate-limit retries. try again later.")
 
-    _issue_cache[key] = embedding
-    ISSUE_CACHE_PATH.parent.mkdir(exist_ok=True)
-    ISSUE_CACHE_PATH.write_text(json.dumps(_issue_cache))
+    with _issue_cache_lock:
+        _issue_cache[key] = embedding
+        ISSUE_CACHE_PATH.parent.mkdir(exist_ok=True)
+        ISSUE_CACHE_PATH.write_text(json.dumps(_issue_cache))
     return embedding
 
 

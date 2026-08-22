@@ -3,16 +3,20 @@ The orchestrator: a tool-use loop whose two tools are full nested agent loops.
 """
 from __future__ import annotations
 
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import anthropic
 from anthropic.types import MessageParam
 from dotenv import load_dotenv
 
-from subagents import run_docs_subagent, run_triage_subagent
+from retriever import QUERY_CACHE_PATH
+from subagents import ISSUE_CACHE_PATH, run_docs_subagent, run_triage_subagent
 from tool_schemas import DELEGATE_TO_DOCS, DELEGATE_TO_TRIAGE
 
 load_dotenv()
 
-MODEL = "claude-sonnet-4-5"
+MODEL = "claude-opus-5"
 MAX_TURNS = 5
 
 client = anthropic.Anthropic()
@@ -56,6 +60,18 @@ SYSTEM = (
 )
 
 
+def _cache_sizes() -> tuple[int, int]:
+    """(docs query cache, issue embed cache) key counts.
+    """
+    sizes = []
+    for path in (QUERY_CACHE_PATH, ISSUE_CACHE_PATH):
+        try:
+            sizes.append(len(json.loads(path.read_text())))
+        except (FileNotFoundError, json.JSONDecodeError):
+            sizes.append(0)
+    return sizes[0], sizes[1]
+
+
 def run_delegate_tool(name: str, tool_input: dict) -> tuple[str, bool]:
     """Dispatch one delegate tool_use block. Returns (content, is_error)."""
     if name == "delegate_to_triage_agent":
@@ -65,6 +81,57 @@ def run_delegate_tool(name: str, tool_input: dict) -> tuple[str, bool]:
     else:
         raise NotImplementedError
     return content, is_error
+
+
+def _run_one_block(block) -> dict:
+    """One tool_use block -> one tool_result dict (without tool ID). Must never raise.
+    """
+    try:
+        content, is_error = run_delegate_tool(block.name, block.input)
+    except Exception as exc:
+        content = f"{type(exc).__name__}: {exc}"
+        is_error = True
+    tool_result = {
+        "type": "tool_result",
+        "content": content,
+        "is_error": is_error,
+    }
+    return tool_result
+
+
+def execute_blocks_serial(blocks) -> list[dict]:
+    """Baseline path. Kept only to capture the Step 9 "before" wall clock --
+    delete it once the number is recorded in notes.md."""
+    tool_results = []
+    for block in blocks:
+        try:
+            content, is_error = run_delegate_tool(block.name, block.input)
+        except Exception as exc:
+            content = f"{type(exc).__name__}: {exc}"
+            is_error = True
+        tool_results.append({
+            "type": "tool_result",
+            "tool_use_id": block.id,
+            "content": content,
+            "is_error": is_error,
+        })
+    return tool_results
+
+
+def execute_blocks_parallel(blocks) -> list[dict]:
+    """Same contract as execute_blocks_serial: one tool_result per block, every
+    tool_use_id matched, all of them going back in a single user message."""
+    with ThreadPoolExecutor(max_workers=len(blocks)) as pool:
+        futures = {pool.submit(_run_one_block, block): block for block in blocks}
+        tool_results = []
+        for fut in as_completed(futures):
+            original = futures[fut]
+            value = fut.result()
+            value["tool_use_id"] = original.id
+            tool_results.append(value)
+
+    order = {b.id: i for i, b in enumerate(blocks)}
+    return sorted(tool_results, key=lambda r: order[r["tool_use_id"]])
 
 
 def orchestrate(issue_text: str) -> str:
@@ -85,21 +152,8 @@ def orchestrate(issue_text: str) -> str:
         )
 
         if response.stop_reason == "tool_use":
-            tool_results = []
-            for block in response.content:
-                if block.type != "tool_use":
-                    continue
-                try:
-                    content, is_error = run_delegate_tool(block.name, block.input)
-                except Exception as exc:
-                    content = f"{type(exc).__name__}: {exc}"
-                    is_error = True
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": content,
-                    "is_error": is_error,
-                })
+            blocks = [b for b in response.content if b.type == "tool_use"]
+            tool_results = execute_blocks_parallel(blocks)
             messages.append({"role": "user", "content": tool_results})
         elif response.stop_reason == "end_turn":
             return last_text
@@ -124,9 +178,17 @@ def orchestrate(issue_text: str) -> str:
     return last_text
 
 if __name__ == "__main__":
+    import time
+    docs_before, issues_before = _cache_sizes()
+    t = time.perf_counter()
     print(orchestrate(
         "Title: extra='forbid' not rejecting unknown fields on nested model\n\n"
         "When I set model_config = ConfigDict(extra='forbid') on a parent model, "
         "unknown fields on a nested model are still accepted... "
     ))
+    elapsed = time.perf_counter() - t
+    docs_after, issues_after = _cache_sizes()
+    print(f"\n{elapsed:.1f}s")
+    print(f"new embeddings this run: "
+          f"docs {docs_after - docs_before}, issues {issues_after - issues_before}")
 
