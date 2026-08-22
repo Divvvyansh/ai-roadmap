@@ -8,6 +8,7 @@ or which tools it called.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from pathlib import Path
@@ -19,7 +20,7 @@ import voyageai.error
 from anthropic.types import MessageParam
 from dotenv import load_dotenv
 
-from retriever import retrieve as retrieve_docs
+from retriever import RetryableToolError, retrieve as retrieve_docs
 from tool_schemas import GET_ISSUE_TOOL, SEARCH_DOCS_TOOL, SEARCH_ISSUES_TOOL
 
 load_dotenv()
@@ -32,35 +33,47 @@ ISSUES_COLLECTION = "issues_title_desc_code"
 CHROMA_PATH = Path(__file__).parent / "chroma_store"
 ISSUES_PATH = Path(__file__).parent / "corpus" / "issues.jsonl"
 
+ISSUE_CACHE_PATH = Path(__file__).parent / "eval" / ".issue_embed_cache.json"
+
 client = anthropic.Anthropic()
 vo = voyageai.Client()
 chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
 
+_issue_cache: dict[str, list[float]] | None = None
 
 # ---------------------------------------------------------------- issue search
 
-def embed_issue_text(text: str) -> list[float]:
+def embed_issue_text(text: str, use_cache: bool = True) -> list[float]:
     """
     Embed issue text for searching the issue collection.
-
-    input_type=None matches ingest_issues.py: duplicate detection is symmetric,
-    both sides are issues. Do NOT reuse retriever.embed_query() here — it passes
-    input_type="query", correct for question-against-passage docs search and
-    wrong for this. The mismatch would not error, only degrade recall.
-
-    Retries on rate limits like every other embedding path in this project. The
-    triage agent issues several searches per run and Voyage's free tier is 3
-    req/min, so an un-retried call fails mid-conversation.
     """
+    global _issue_cache
+    if _issue_cache is None:
+        try:
+            _issue_cache = json.loads(ISSUE_CACHE_PATH.read_text())
+        except (FileNotFoundError, json.JSONDecodeError):
+            _issue_cache = {}
+
+    key = hashlib.sha256(text.encode()).hexdigest()[:16]
+    if use_cache and key in _issue_cache:
+        return _issue_cache[key]
+
     for attempt in range(3):
         try:
-            return [float(x) for x in vo.embed(
+            embedding = [float(x) for x in vo.embed(
                 [text], model="voyage-3.5", input_type=None).embeddings[0]]
+            break
         except voyageai.error.RateLimitError:
             wait = 20 * (attempt + 1)
             print(f"  rate limited, waiting {wait}s (attempt {attempt + 1}/3)")
             time.sleep(wait)
-    raise RuntimeError("Voyage embedding failed after 3 rate-limit retries")
+    else:
+        raise RetryableToolError("Voyage embedding failed after 3 rate-limit retries. try again later.")
+
+    _issue_cache[key] = embedding
+    ISSUE_CACHE_PATH.parent.mkdir(exist_ok=True)
+    ISSUE_CACHE_PATH.write_text(json.dumps(_issue_cache))
+    return embedding
 
 
 def search_issues(query: str, k: int = 5) -> list[dict]:
@@ -84,7 +97,6 @@ def search_issues(query: str, k: int = 5) -> list[dict]:
             }
         )
     return hits
-
 
 def get_issue(number: int) -> dict | None:
     """Full text of one issue from the harvested corpus."""
@@ -145,13 +157,16 @@ def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
     messages: list[MessageParam] = [{"role": "user", "content": task}]
     last_text = ""
 
+    searches_ok = 0
+    searches_failed = 0
+
     while len(messages) < 2*MAX_TURNS + 1:
         response = client.messages.create(
             model=MODEL,
             system=system,
             messages=messages,
             tools=tools,
-            max_tokens=1000,
+            max_tokens=1500,
         )
         messages.append({"role": "assistant", "content": response.content})
         last_text = " ".join(
@@ -166,6 +181,12 @@ def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
                 try:
                     content = run_tool(block.name, block.input)
                     failed = False
+                    if block.name in ("search_issues", "search_docs"):
+                        searches_ok += 1
+                except RetryableToolError as exc:
+                    content = f"{exc} — this search did not run."
+                    failed = True
+                    searches_failed += 1
                 except Exception as exc:
                     content = f"{type(exc).__name__}: {exc}"
                     failed = True
@@ -177,6 +198,16 @@ def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
                 })
             messages.append({"role": "user", "content": tool_results})
         elif response.stop_reason == "end_turn":
+            if searches_failed and searches_ok == 0:
+                return (f"Rate limited: all {searches_failed} searches failed, the "
+                        f"corpus was never queried. Retry later. No verdict was "
+                        f"reached."), True
+            if searches_failed:
+                total = searches_ok + searches_failed
+                return (f"PARTIAL RESULT: {searches_failed} of {total} searches were "
+                        f"rate limited and did not run, so the corpus was only "
+                        f"partly searched. Treat the finding below as incomplete "
+                        f"rather than conclusive.\n\n{last_text}"), False
             return last_text, False
         elif response.stop_reason == "max_tokens":
             return (f"Sub-agent could not generate a full response due to running out "
@@ -200,8 +231,13 @@ def run_triage_subagent(task: str) -> tuple[str, bool]:
         "PROCEDURE\n"
         "1. Rewrite the report as a natural-language search query and call search_issues.\n"
         "2. Call get_issue on 2-3 candidates and read their bodies. Do not commit to the "
-        "top-ranked candidate without reading others.\n"
-        "3. Decide, then answer in a single final message.\n\n"
+        "top-ranked candidate without reading others.\n\n"
+        "3. After a duplicate is found or 2 tool calls have been made to search_issues, decide, then answer in a single final message.\n\n"
+
+        "BUDGET\n"
+        "1. Do not make more than 2 search_issues tool calls.\n"
+        "Irrelevant candidates are the 'no duplicate found' answer, not a reason to search again.\n\n" 
+        f"2. You only get {MAX_TURNS} message turns. Reserve the last message for the final decision and response.\n\n"
 
         "THE SIMILARITY SCORE IS NOT EVIDENCE. Measured against known duplicate pairs, "
         "true duplicates score a median of 0.884 and unrelated issues a median of 0.864, "
@@ -212,12 +248,13 @@ def run_triage_subagent(task: str) -> tuple[str, bool]:
         "ANSWER FORMAT\n"
         "- Duplicate found: the issue number, its state_reason and closed_at, and one or "
         "two sentences on what it covered and why it matches.\n"
-        "- No duplicate found: say so in the first line, then list every candidate "
+        "- No duplicate found: say so in the first line, then list every candidate. Before you print anything, the first line must say no duplicates found. "
         "search_issues returned as 'number - title - similarity', each with a short reason "
         "it was rejected. Finding no duplicate is a valid, successful result — state it "
         "plainly, do not apologise or hedge. Retrieval surfaces the correct prior issue "
         "only about 72% of the time, so those rejected candidates are the caller's only "
-        "signal that a near-miss existed.")
+        "signal that a near-miss existed. " 
+        "The similarity must contain 'similairty: ' and the similarity score that you found explicitly. ")
     return run_subagent(task, system, [SEARCH_ISSUES_TOOL, GET_ISSUE_TOOL])
 
 

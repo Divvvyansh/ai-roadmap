@@ -23,6 +23,9 @@ COLLECTION_NAME = "pydantic_docs"
 
 QUERY_CACHE_PATH = Path(__file__).parent / "eval" / ".query_cache.json"
 
+class RetryableToolError(Exception):
+    """Transient — the caller should retry later, not treat this as an answer."""
+
 vo = voyageai.Client()
 chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
 
@@ -55,7 +58,7 @@ def embed_query(query: str, use_cache: bool = True) -> list[float]:
             print(f"rate limited, waiting {wait}s (attempt {attempt + 1}/3)")
             time.sleep(wait)
     else:
-        raise RuntimeError("Voyage embedding failed after 3 rate-limit retries")
+        raise RetryableToolError("Voyage embedding failed after 3 rate-limit retries. Try again later.")
 
     _query_cache[key] = embedding
     QUERY_CACHE_PATH.parent.mkdir(exist_ok=True)
