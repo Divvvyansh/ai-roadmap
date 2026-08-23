@@ -24,10 +24,14 @@ from dotenv import load_dotenv
 from retriever import RetryableToolError, retrieve as retrieve_docs
 from tool_schemas import GET_ISSUE_TOOL, SEARCH_DOCS_TOOL, SEARCH_ISSUES_TOOL
 
+from github_client import fetch_issue
+
 load_dotenv()
 
 MODEL = "claude-haiku-4-5"
 MAX_TURNS = 6
+
+SEARCH_TOOLS = ("search_issues", "search_docs")
 
 DOCS_COLLECTION = "pydantic_docs_structured"
 ISSUES_COLLECTION = "issues_title_desc_code"
@@ -103,7 +107,7 @@ def search_issues(query: str, k: int = 5) -> list[dict]:
     return hits
 
 def get_issue(number: int) -> dict | None:
-    """Full text of one issue from the harvested corpus."""
+    """Full text of one issue from the harvested corpus and the github API."""
     with open(ISSUES_PATH, "r") as f:
         for line in f:
             issue = json.loads(line)
@@ -112,6 +116,9 @@ def get_issue(number: int) -> dict | None:
         else:
             issue = None
     if issue is None:
+        new_issue = fetch_issue(number)
+        if new_issue is not None:
+            return new_issue
         return None
     output_issue = {
         "number": issue["number"],
@@ -163,6 +170,9 @@ def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
 
     searches_ok = 0
     searches_failed = 0
+    lookups_failed = 0   # non-search tools, e.g. get_issue hitting GitHub's limit
+    hard_failure = False
+    hard_failure_note = ""
 
     while len(messages) < 2*MAX_TURNS + 1:
         response = client.messages.create(
@@ -185,15 +195,21 @@ def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
                 try:
                     content = run_tool(block.name, block.input)
                     failed = False
-                    if block.name in ("search_issues", "search_docs"):
+                    if block.name in SEARCH_TOOLS:
                         searches_ok += 1
                 except RetryableToolError as exc:
-                    content = f"{exc} — this search did not run."
+                    content = f"{exc} — this tool call did not run."
                     failed = True
-                    searches_failed += 1
+                    if block.name in SEARCH_TOOLS:
+                        searches_failed += 1
+                    else:
+                        lookups_failed += 1
                 except Exception as exc:
                     content = f"{type(exc).__name__}: {exc}"
                     failed = True
+                    hard_failure = True
+                    hard_failure_note = content
+
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": block.id,
@@ -202,16 +218,32 @@ def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
                 })
             messages.append({"role": "user", "content": tool_results})
         elif response.stop_reason == "end_turn":
+            if hard_failure and searches_ok == 0:
+                return (f"Tool failure, not retryable: {hard_failure_note}. The corpus was "
+                        f"never queried and no verdict was reached. Retrying will fail "
+                        f"identically until the deployment is fixed."), True
+            if hard_failure:
+                return (f"PARTIAL RESULT: a tool failed permanently ({hard_failure_note}) and "
+                        f"will keep failing, so part of this check never ran. Treat the "
+                        f"finding below as incomplete rather than conclusive.\n\n{last_text}"), False 
             if searches_failed and searches_ok == 0:
                 return (f"Rate limited: all {searches_failed} searches failed, the "
                         f"corpus was never queried. Retry later. No verdict was "
                         f"reached."), True
-            if searches_failed:
-                total = searches_ok + searches_failed
-                return (f"PARTIAL RESULT: {searches_failed} of {total} searches were "
-                        f"rate limited and did not run, so the corpus was only "
-                        f"partly searched. Treat the finding below as incomplete "
-                        f"rather than conclusive.\n\n{last_text}"), False
+            if searches_failed or lookups_failed:
+                caveats = []
+                if searches_failed:
+                    total = searches_ok + searches_failed
+                    caveats.append(
+                        f"{searches_failed} of {total} corpus searches were rate limited "
+                        f"and did not run, so the corpus was only partly searched")
+                if lookups_failed:
+                    caveats.append(
+                        f"{lookups_failed} issue lookup(s) were rate limited, so those "
+                        f"issues could not be read — the corpus search itself was "
+                        f"unaffected")
+                return (f"PARTIAL RESULT: {'; '.join(caveats)}. Treat the finding below "
+                        f"as incomplete rather than conclusive.\n\n{last_text}"), False
             return last_text, False
         elif response.stop_reason == "max_tokens":
             return (f"Sub-agent could not generate a full response due to running out "
@@ -233,10 +265,15 @@ def run_triage_subagent(task: str) -> tuple[str, bool]:
         "no greetings, no praise, no offers of further help, no second person.\n\n"
 
         "PROCEDURE\n"
-        "1. Rewrite the report as a natural-language search query and call search_issues.\n"
-        "2. Call get_issue on 2-3 candidates and read their bodies. Do not commit to the "
+        "1. If the report cites an issue number, call get_issue on that number before "
+        "searching. A number the reporter supplied is a claim, not a finding — it may be "
+        "unrelated, may not exist, or may be a pull request. If the lookup fails or comes "
+        "back empty, say so explicitly and carry on; never repeat a cited number as though "
+        "you confirmed it.\n"
+        "2. Rewrite the report as a natural-language search query and call search_issues.\n"
+        "3. Call get_issue on 2-3 candidates and read their bodies. Do not commit to the "
         "top-ranked candidate without reading others.\n\n"
-        "3. After a duplicate is found or 2 tool calls have been made to search_issues, decide, then answer in a single final message.\n\n"
+        "4. After a duplicate is found or 2 tool calls have been made to search_issues, decide, then answer in a single final message.\n\n"
 
         "BUDGET\n"
         "1. Do not make more than 2 search_issues tool calls.\n"
