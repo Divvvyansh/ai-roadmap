@@ -119,3 +119,44 @@ DELEGATE_TO_DOCS = {
         "required": ["task"],
     },
 }
+
+
+DELEGATE_TO_CHECKER = {
+    "name": "delegate_to_checker_agent",
+    "description": (
+        "Invokes a checker agent that independently verifies whether one specific cited issue actually supports a duplicate claim made about it. "
+        "It is handed a single issue number and no alternatives, so 'this is not a duplicate' is a normal and expected answer — unlike the triage agent, which picks a best match out of five candidates and therefore always has a winner. "
+
+        "Call this whenever the triage agent cites an issue number that you are considering acting on. "
+        "The retrieval underneath the triage agent cannot separate duplicates from unrelated issues on its own: true duplicates score a median of 0.884 and unrelated issues 0.864, and an unrelated issue outranks the true duplicate in roughly half of all cases. "
+        "A triage citation is a candidate for closure, never a basis for one. Acting on an unchecked citation risks closing a live bug against an issue that has nothing to do with it. "
+
+        "The agent returns a first line reading exactly 'VERDICT: X', followed by its reasoning, and for a confirmed duplicate, quoted text from the cited issue. "
+        "DUPLICATE means the cited issue has the same trigger and the same behaviour, and the change that resolved it would resolve this report. "
+        "RELATED means the cited issue is genuinely about the same area but differs in trigger, configuration, or scope — not grounds for closing. "
+        "REGRESSION means the cited issue was closed as completed and this report describes that behaviour happening again — not a duplicate, a defect that came back. "
+        "UNRELATED means the cited issue does not bear on this report at all. All four are successful results, not failures. "
+
+        "The agent starts from a fresh message list and sees nothing that is not copied into the task string. It re-reads the cited issue itself rather than trusting any description of it. "
+        "Do not tell it what the triage agent concluded, how confident triage was, or what similarity score the candidate scored. A judge shown the argument grades the argument instead of the evidence, and its verdict then stops being an independent signal you can weigh against triage's — you get two signals that agree because one copied the other. "
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "task": {
+                "type": "string",
+                "description": (
+                    "Exactly two things, in this shape:\n"
+                    "CLAIM: the report below duplicates issue #N.\n"
+                    "ORIGINAL REPORT:\n"
+                    "<the incoming issue's title and body, copied verbatim>\n\n"
+                    "The report must be the reporter's own words, not a summary of them. "
+                    "The checker decides by comparing specifics — the exact configuration, the exact error, the code that triggers it — and a summary is precisely where those specifics are lost. "
+                    "Summarising also makes every issue read more like every other issue, which biases the checker toward confirming. "
+                    "Include no verdict, no similarity score, and no reasoning from the triage agent."
+                ),
+            }
+        },
+        "required": ["task"],
+    },
+}

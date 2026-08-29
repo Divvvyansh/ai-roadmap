@@ -84,17 +84,26 @@ def embed_issue_text(text: str, use_cache: bool = True) -> list[float]:
     return embedding
 
 
+# Test-only. Numbers search_issues will not return.
+
+EXCLUDE_FROM_SEARCH: set[int] = set()
+
+
 def search_issues(query: str, k: int = 5) -> list[dict]:
 
     embedded_query = embed_issue_text(query)
     collection = chroma_client.get_collection(ISSUES_COLLECTION)
     results = collection.query(
         query_embeddings=[embedded_query],
-        n_results=k,
+        n_results=k + len(EXCLUDE_FROM_SEARCH),
         include=["metadatas", "distances"],
     )
     hits = []
     for metadata, distance in zip(results["metadatas"][0], results["distances"][0]):
+        if metadata["number"] in EXCLUDE_FROM_SEARCH:
+            continue
+        if len(hits) >= k:
+            break
         similarity = 1 - distance  
         hits.append(
             {
@@ -161,16 +170,20 @@ def run_tool(name: str, tool_input: dict) -> str:
     else:
         raise ValueError(f"Unknown tool: {name}")
 
-def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
-    """
-    Run one sub-agent to completion. Returns (content_for_tool_result, is_error).
-    """
+def run_subagent(
+    task: str,
+    system: str,
+    tools: list[dict],
+    essential_tools: tuple[str, ...] = SEARCH_TOOLS,
+    essential_label: str = "corpus searches",
+) -> tuple[str, bool]:
+    
     messages: list[MessageParam] = [{"role": "user", "content": task}]
     last_text = ""
 
-    searches_ok = 0
-    searches_failed = 0
-    lookups_failed = 0   # non-search tools, e.g. get_issue hitting GitHub's limit
+    essential_ok = 0
+    essential_failed = 0
+    secondary_failed = 0  
     hard_failure = False
     hard_failure_note = ""
 
@@ -195,15 +208,15 @@ def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
                 try:
                     content = run_tool(block.name, block.input)
                     failed = False
-                    if block.name in SEARCH_TOOLS:
-                        searches_ok += 1
+                    if block.name in essential_tools:
+                        essential_ok += 1
                 except RetryableToolError as exc:
                     content = f"{exc} — this tool call did not run."
                     failed = True
-                    if block.name in SEARCH_TOOLS:
-                        searches_failed += 1
+                    if block.name in essential_tools:
+                        essential_failed += 1
                     else:
-                        lookups_failed += 1
+                        secondary_failed += 1
                 except Exception as exc:
                     content = f"{type(exc).__name__}: {exc}"
                     failed = True
@@ -218,30 +231,35 @@ def run_subagent(task: str, system: str, tools: list[dict]) -> tuple[str, bool]:
                 })
             messages.append({"role": "user", "content": tool_results})
         elif response.stop_reason == "end_turn":
-            if hard_failure and searches_ok == 0:
-                return (f"Tool failure, not retryable: {hard_failure_note}. The corpus was "
-                        f"never queried and no verdict was reached. Retrying will fail "
-                        f"identically until the deployment is fixed."), True
+            if hard_failure and essential_ok == 0:
+                return (f"Tool failure, not retryable: {hard_failure_note}. No "
+                        f"{essential_label} succeeded, so no verdict was reached. "
+                        f"Retrying will fail identically until the deployment is "
+                        f"fixed."), True
             if hard_failure:
                 return (f"PARTIAL RESULT: a tool failed permanently ({hard_failure_note}) and "
                         f"will keep failing, so part of this check never ran. Treat the "
                         f"finding below as incomplete rather than conclusive.\n\n{last_text}"), False 
-            if searches_failed and searches_ok == 0:
-                return (f"Rate limited: all {searches_failed} searches failed, the "
-                        f"corpus was never queried. Retry later. No verdict was "
-                        f"reached."), True
-            if searches_failed or lookups_failed:
+            if essential_failed and essential_ok == 0:
+                return (f"Rate limited: all {essential_failed} {essential_label} failed "
+                        f"and none succeeded, so no evidence was gathered and no verdict "
+                        f"was reached. Retry later."), True
+            if essential_ok == 0:
+                return (f"No verdict: the agent answered without a single successful call "
+                        f"to {' or '.join(essential_tools)}, so nothing below rests on "
+                        f"retrieved evidence. Discard it."), True
+            if essential_failed or secondary_failed:
                 caveats = []
-                if searches_failed:
-                    total = searches_ok + searches_failed
+                if essential_failed:
+                    total = essential_ok + essential_failed
                     caveats.append(
-                        f"{searches_failed} of {total} corpus searches were rate limited "
-                        f"and did not run, so the corpus was only partly searched")
-                if lookups_failed:
+                        f"{essential_failed} of {total} {essential_label} were rate "
+                        f"limited and did not run, so the evidence is incomplete")
+                if secondary_failed:
                     caveats.append(
-                        f"{lookups_failed} issue lookup(s) were rate limited, so those "
-                        f"issues could not be read — the corpus search itself was "
-                        f"unaffected")
+                        f"{secondary_failed} supporting issue lookup(s) were rate limited, "
+                        f"so those issues could not be read — the {essential_label} "
+                        f"themselves were unaffected")
                 return (f"PARTIAL RESULT: {'; '.join(caveats)}. Treat the finding below "
                         f"as incomplete rather than conclusive.\n\n{last_text}"), False
             return last_text, False
@@ -321,13 +339,209 @@ def run_docs_subagent(task: str) -> tuple[str, bool]:
     return run_subagent(task, system, [SEARCH_DOCS_TOOL])
 
 
-def main():
-    content, is_error = run_triage_subagent(
-        "A user reports that model_config = ConfigDict(extra='forbid') is not "
-        "rejecting unknown fields on a nested model. Is this a known duplicate?"
+# ------------------------------------------------------------------- checker
+
+def run_checker_subagent(task: str) -> tuple[str, bool]:
+    """Verify that a cited issue actually supports the claim made about it.
+
+    Deliberately blind to triage's reasoning: it re-reads the cited issue itself
+    and judges the citation, not the argument that produced it.
+    """
+    system = (
+        "You are a github issue checking agent that checks if a new issue is a real duplicate of the issue that the input says it is. \n"
+        "Your output is read by another agent, not by a person. Be terse and factual: \n"
+        "no greetings, no praise, no offers of further help, no second person.\n\n"
+
+        "Procedure: \n"
+        "1. Always call the get_issue tool before you produce a response. \n"
+        "2. From the input message, extract the issue number that is a potential duplicate and pull up its details using the tool. \n"
+        "3. Look at the new issue in the input and the potential duplicate that you pulled using the tool and compare them. \n"
+        "4. Verify and conclude whether the duplicate issue indeed fully duplicates the new issue. \n\n"
+
+        "WHAT COUNTS AS A DUPLICATE\n"
+        "The bar is a shared cause, not a shared topic. Two issues are duplicates "
+        "when the change that resolved the cited issue would also resolve the new "
+        "report. Same feature, same config key, or same error message is not "
+        "enough on its own: pydantic issues share heavy template boilerplate and a "
+        "small API surface, so unrelated reports routinely name the same thing.\n\n"
+
+        "You are not choosing the best match. You were handed one issue and no "
+        "alternatives, and 'this does not clear the bar' is a correct and expected "
+        "answer. Do not reach for a way to make the claim work.\n\n"
+
+        "Check three things against the cited issue's body, labels and "
+        "state_reason:\n"
+        "1. TRIGGER -- what input, config, or call sequence produces the "
+        "behaviour. Same symptom reached by a different trigger is not a "
+        "duplicate.\n"
+        "2. BEHAVIOUR, in specifics -- 'validation does not fire' and 'validation "
+        "fires with the wrong error type' are different bugs, not two wordings of "
+        "one.\n"
+        "3. RESOLUTION -- state_reason 'completed' means the cited issue was "
+        "fixed, so a new report of that same behaviour is either a different bug "
+        "or a regression; say which, rather than confirming a duplicate. "
+        "state_reason 'not_planned' means the behaviour was intentional, which "
+        "supports the claim only if the new report asks for the same thing that "
+        "was declined.\n\n"
+
+        "Reject these, even though each is genuinely related:\n"
+        "- Same feature, different configuration, type, or nesting depth.\n"
+        "- The cited issue is a broad umbrella; the new report is one specific "
+        "case inside it that the cited issue never addressed.\n"
+        "- One is a bug report and the other a feature request about the same "
+        "behaviour.\n"
+        "- The cited issue was closed before a version the new report is running "
+        "on.\n"
+        "- The cited issue is a question that was answered, and the new report is "
+        "a defect claim about the same area.\n\n"
+
+        "Answer format: \n"
+        "Begin your response with a line reading exactly 'VERDICT: X', where X is "
+        "one of DUPLICATE, RELATED, REGRESSION, UNRELATED. Nothing else on that "
+        "line. Then the explanation.\n"
+        "If the duplicate issue clears the bar to qualify as a genuine duplicate - say so directly in the first line. "
+        "Then quote text from the duplicate issue that supports your claim of why it is a genuine duplicate. \n"
+        "If, for any reason the duplicate issue turns out to be related to the new issue - first clearly state that it is not a duplicate  "
+        "then proceed to explain how it is related any why it did not clear the bar to qualify as a genuine duplicate. \n"
+        "If the new issue falls under the category of being a regression or a different bug - state so and support your claim. \n"
+        "If the duplicate issue is nota genuine duplicate and neither related to the new issue - say so directly in one line. \n\n"
+
+        "Ground rules: \n"
+        "1. Only conclude that an issue is an genuine duplicate if you can quote specififc text from the fetched issue that can fully support the claim. \n"
+        "2. The input potential duplicate comes from another sub-agent that wanted its claim to be true - Challenge it fully before making an conclusion, \n\n"
     )
-    print(f"is_error={is_error}\n{content}")
+    return run_subagent(
+        task, system, [GET_ISSUE_TOOL],
+        essential_tools=("get_issue",),
+        essential_label="cited-issue lookups",
+    )
+
+
+REPORT = (
+    "Title: extra='forbid' not rejecting unknown fields on nested model\n\n"
+    "When I set model_config = ConfigDict(extra='forbid') on a parent model, "
+    "unknown fields on a nested model are still accepted."
+)
+
+
+def _check(number: int) -> tuple[str, bool]:
+    return run_checker_subagent(
+        f"CLAIM: the report below duplicates issue #{number}.\n\n"
+        f"ORIGINAL REPORT:\n{REPORT}"
+    )
+
+
+def main_checker():
+    """Three cases. #11166 is a plausible citation, #10656 ('cannot pickle
+    _thread.RLock') is a wrong one, and #99999 forces the lookup to fail.
+    """
+    global fetch_issue
+
+    for number in (11166, 10656):
+        content, is_error = _check(number)
+        print(f"----- cited #{number}  is_error={is_error}\n{content}\n")
+
+    calls = []
+    real_fetch_issue = fetch_issue
+
+    def _raising_fetch_issue(number: int):
+        calls.append(number)
+        raise RetryableToolError(
+            "FORCED(test): GitHub rate limit hit. Try after: 3600 seconds")
+
+    fetch_issue = _raising_fetch_issue
+    try:
+        content, is_error = _check(99999)
+    finally: 
+        fetch_issue = real_fetch_issue
+
+    print(f"----- cited #99999 (forced lookup failure)  is_error={is_error}\n"
+          f"{content}\n")
+
+    if not calls:
+        print("INCONCLUSIVE: fetch_issue was never called, so the forced failure "
+              "path did not run. Whatever produced the result above, it was not "
+              "this test.")
+    elif not is_error:
+        print(f"FAIL: fetch_issue raised on {calls}, but the sub-agent returned "
+              f"is_error=False. An unverifiable citation was reported as a "
+              f"usable result.")
+    else:
+        print(f"OK: fetch_issue raised on {calls}, and the failure reached the "
+              f"orchestrator as is_error=True.")
+
+
+PAIRS_PATH = Path(__file__).parent / "eval" / "duplicate_pairs.json"
+
+VERDICTS = ("DUPLICATE", "RELATED", "REGRESSION", "UNRELATED")
+
+
+def _verdict(text: str) -> str:
+    """Read the mandated VERDICT: line. UNPARSED is a result, not an error --
+    it counts how often the prompt failed to emit the token at all."""
+    for line in text.splitlines():
+        line = line.strip()
+        if line.upper().startswith("VERDICT:"):
+            label = line.split(":", 1)[1].strip().upper()
+            return label if label in VERDICTS else f"UNPARSED({label[:20]})"
+    return "UNPARSED(no verdict line)"
+
+
+def _corpus_index() -> dict[int, dict]:
+    return {i["number"]: i for i in
+            (json.loads(l) for l in open(ISSUES_PATH))}
+
+
+def main_checker_pairs(n: int = 8, seed: int = 0):
+    """Both halves of the confusion matrix in one run.
+
+    For each known duplicate pair, the checker is asked the same question twice:
+    once citing the issue a maintainer actually closed it against (should
+    confirm), once citing a random unrelated corpus issue (should not). One
+    number without the other says nothing -- a checker that always confirms and
+    one that always rejects each score 100% on one half.
+    """
+    import random
+
+    index = _corpus_index()
+    pairs = [p for p in json.loads(PAIRS_PATH.read_text())
+             if p["duplicate"] in index and p["original"] in index]
+    rng = random.Random(seed)
+    sample = rng.sample(pairs, min(n, len(pairs)))
+    others = [num for num in index if num not in
+              {x for p in sample for x in (p["duplicate"], p["original"])}]
+
+    true_counts: dict[str, int] = {}
+    rand_counts: dict[str, int] = {}
+
+    for pair in sample:
+        dup = index[pair["duplicate"]]
+        report = f"Title: {dup['title']}\n\n{(dup['body'] or '')[:2000]}"
+        decoy = rng.choice(others)
+
+        for cited, counts, kind in ((pair["original"], true_counts, "true"),
+                                    (decoy, rand_counts, "rand")):
+            content, is_error = run_checker_subagent(
+                f"CLAIM: the report below duplicates issue #{cited}.\n\n"
+                f"ORIGINAL REPORT:\n{report}"
+            )
+            v = "ERROR" if is_error else _verdict(content)
+            counts[v] = counts.get(v, 0) + 1
+            print(f"  #{dup['number']:>6} vs #{cited:<6} [{kind}] -> {v}")
+
+    total = len(sample)
+    print(f"\n{'verdict':<28} {'true pair':>10} {'random':>10}")
+    for v in sorted(set(true_counts) | set(rand_counts)):
+        print(f"{v:<28} {true_counts.get(v, 0):>10} {rand_counts.get(v, 0):>10}")
+    print(f"{'-- n':<28} {total:>10} {total:>10}")
+    print(f"\nconfirm rate: true pairs {true_counts.get('DUPLICATE', 0)}/{total}, "
+          f"random citations {rand_counts.get('DUPLICATE', 0)}/{total}")
+    unparsed = sum(c for v, c in (*true_counts.items(), *rand_counts.items())
+                   if v.startswith("UNPARSED"))
+    if unparsed:
+        print(f"WARNING: {unparsed}/{2 * total} responses had no parseable "
+              f"VERDICT line -- the numbers above undercount everything.")
 
 
 if __name__ == "__main__":
-    main()
+    main_checker()
