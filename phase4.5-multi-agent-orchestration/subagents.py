@@ -12,6 +12,7 @@ import hashlib
 import json
 import threading
 import time
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
 import anthropic
@@ -140,6 +141,56 @@ def get_issue(number: int) -> dict | None:
     return output_issue
 
 
+# ------------------------------------------------------------------- tracing for orchestrator eval
+
+@dataclass
+class Usage:
+    """Token and call counts for one level of the system.
+    """
+    api_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
+
+    def record(self, usage) -> None:
+        """Fold in one `response.usage` from the SDK."""
+        self.api_calls += 1
+        self.input_tokens += getattr(usage, "input_tokens", 0) or 0
+        self.output_tokens += getattr(usage, "output_tokens", 0) or 0
+        self.cache_read_input_tokens += getattr(
+            usage, "cache_read_input_tokens", 0) or 0
+        self.cache_creation_input_tokens += getattr(
+            usage, "cache_creation_input_tokens", 0) or 0
+
+    def __add__(self, other: "Usage") -> "Usage":
+        return Usage(**{f.name: getattr(self, f.name) + getattr(other, f.name)
+                        for f in fields(Usage)})
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class SubagentResult:
+    """One completed sub-agent run.
+    """
+    content: str
+    is_error: bool
+    agent: str
+    model: str
+    task: str
+    usage: Usage
+    turns: int
+    tool_calls: list[str]
+    stop_reason: str = ""
+
+    def as_dict(self) -> dict:
+        d = asdict(self)
+        d["usage"] = self.usage.as_dict()
+        return d
+
+
 def run_tool(name: str, tool_input: dict) -> str:
     """Dispatch one tool_use block. Returns the string the model will read."""
     tool_output = ""
@@ -174,12 +225,32 @@ def run_subagent(
     task: str,
     system: str,
     tools: list[dict],
+    agent: str,
     essential_tools: tuple[str, ...] = SEARCH_TOOLS,
     essential_label: str = "corpus searches",
-) -> tuple[str, bool]:
-    
+) -> SubagentResult:
+
     messages: list[MessageParam] = [{"role": "user", "content": task}]
     last_text = ""
+
+    usage = Usage()
+    tool_calls: list[str] = []
+    stop_reason = ""
+
+    def done(content: str, is_error: bool) -> SubagentResult:
+        """Every exit from this function goes through here, so no return path can
+        silently drop the usage that the cost metric depends on."""
+        return SubagentResult(
+            content=content,
+            is_error=is_error,
+            agent=agent,
+            model=MODEL,
+            task=task,
+            usage=usage,
+            turns=usage.api_calls,
+            tool_calls=tool_calls,
+            stop_reason=stop_reason,
+        )
 
     essential_ok = 0
     essential_failed = 0
@@ -195,6 +266,8 @@ def run_subagent(
             tools=tools,
             max_tokens=1500,
         )
+        usage.record(response.usage)
+        stop_reason = response.stop_reason or ""
         messages.append({"role": "assistant", "content": response.content})
         last_text = " ".join(
             block.text for block in response.content if block.type == "text"
@@ -205,6 +278,7 @@ def run_subagent(
             for block in response.content:
                 if block.type != "tool_use":
                     continue
+                tool_calls.append(block.name)
                 try:
                     content = run_tool(block.name, block.input)
                     failed = False
@@ -232,22 +306,22 @@ def run_subagent(
             messages.append({"role": "user", "content": tool_results})
         elif response.stop_reason == "end_turn":
             if hard_failure and essential_ok == 0:
-                return (f"Tool failure, not retryable: {hard_failure_note}. No "
+                return done((f"Tool failure, not retryable: {hard_failure_note}. No "
                         f"{essential_label} succeeded, so no verdict was reached. "
                         f"Retrying will fail identically until the deployment is "
-                        f"fixed."), True
+                        f"fixed."), True)
             if hard_failure:
-                return (f"PARTIAL RESULT: a tool failed permanently ({hard_failure_note}) and "
+                return done((f"PARTIAL RESULT: a tool failed permanently ({hard_failure_note}) and "
                         f"will keep failing, so part of this check never ran. Treat the "
-                        f"finding below as incomplete rather than conclusive.\n\n{last_text}"), False 
+                        f"finding below as incomplete rather than conclusive.\n\n{last_text}"), False)
             if essential_failed and essential_ok == 0:
-                return (f"Rate limited: all {essential_failed} {essential_label} failed "
+                return done((f"Rate limited: all {essential_failed} {essential_label} failed "
                         f"and none succeeded, so no evidence was gathered and no verdict "
-                        f"was reached. Retry later."), True
+                        f"was reached. Retry later."), True)
             if essential_ok == 0:
-                return (f"No verdict: the agent answered without a single successful call "
+                return done((f"No verdict: the agent answered without a single successful call "
                         f"to {' or '.join(essential_tools)}, so nothing below rests on "
-                        f"retrieved evidence. Discard it."), True
+                        f"retrieved evidence. Discard it."), True)
             if essential_failed or secondary_failed:
                 caveats = []
                 if essential_failed:
@@ -260,21 +334,21 @@ def run_subagent(
                         f"{secondary_failed} supporting issue lookup(s) were rate limited, "
                         f"so those issues could not be read — the {essential_label} "
                         f"themselves were unaffected")
-                return (f"PARTIAL RESULT: {'; '.join(caveats)}. Treat the finding below "
-                        f"as incomplete rather than conclusive.\n\n{last_text}"), False
-            return last_text, False
+                return done((f"PARTIAL RESULT: {'; '.join(caveats)}. Treat the finding below "
+                        f"as incomplete rather than conclusive.\n\n{last_text}"), False)
+            return done(last_text, False)
         elif response.stop_reason == "max_tokens":
-            return (f"Sub-agent could not generate a full response due to running out "
-                    f"of tokens. Partial result: {last_text}"), False
+            return done((f"Sub-agent could not generate a full response due to running out "
+                    f"of tokens. Partial result: {last_text}"), False)
         else:
-            return (f"Sub-agent failed with stop_reason={response.stop_reason}. "
-                    f"Partial result: {last_text}"), True
+            return done((f"Sub-agent failed with stop_reason={response.stop_reason}. "
+                    f"Partial result: {last_text}"), True)
 
-    return (f"Sub-agent did not finish within its turn budget. "
-            f"Partial result: {last_text}"), True
+    return done((f"Sub-agent did not finish within its turn budget. "
+            f"Partial result: {last_text}"), True)
 
 
-def run_triage_subagent(task: str) -> tuple[str, bool]:
+def run_triage_subagent(task: str) -> SubagentResult:
     system = (
         "You are a triage agent for the pydantic/pydantic GitHub repository. Given a "
         "bug report or question, decide whether it duplicates a previously closed issue.\n\n"
@@ -314,10 +388,10 @@ def run_triage_subagent(task: str) -> tuple[str, bool]:
         "only about 72% of the time, so those rejected candidates are the caller's only "
         "signal that a near-miss existed. " 
         "The similarity must contain 'similairty: ' and the similarity score that you found explicitly. ")
-    return run_subagent(task, system, [SEARCH_ISSUES_TOOL, GET_ISSUE_TOOL])
+    return run_subagent(task, system, [SEARCH_ISSUES_TOOL, GET_ISSUE_TOOL], "triage")
 
 
-def run_docs_subagent(task: str) -> tuple[str, bool]:
+def run_docs_subagent(task: str) -> SubagentResult:
     system = (
         "You answer questions about pydantic using only pydantic's own documentation.\n\n"
 
@@ -336,12 +410,12 @@ def run_docs_subagent(task: str) -> tuple[str, bool]:
         "chunks do not contain the answer, say exactly that and name the doc_ids that came "
         "back instead. A grounded 'the documentation does not cover this' is a correct "
         "answer, not a failure.")
-    return run_subagent(task, system, [SEARCH_DOCS_TOOL])
+    return run_subagent(task, system, [SEARCH_DOCS_TOOL], "docs")
 
 
 # ------------------------------------------------------------------- checker
 
-def run_checker_subagent(task: str) -> tuple[str, bool]:
+def run_checker_subagent(task: str) -> SubagentResult:
     """Verify that a cited issue actually supports the claim made about it.
 
     Deliberately blind to triage's reasoning: it re-reads the cited issue itself
@@ -411,7 +485,7 @@ def run_checker_subagent(task: str) -> tuple[str, bool]:
         "2. The input potential duplicate comes from another sub-agent that wanted its claim to be true - Challenge it fully before making an conclusion, \n\n"
     )
     return run_subagent(
-        task, system, [GET_ISSUE_TOOL],
+        task, system, [GET_ISSUE_TOOL], "checker",
         essential_tools=("get_issue",),
         essential_label="cited-issue lookups",
     )
@@ -424,7 +498,7 @@ REPORT = (
 )
 
 
-def _check(number: int) -> tuple[str, bool]:
+def _check(number: int) -> SubagentResult:
     return run_checker_subagent(
         f"CLAIM: the report below duplicates issue #{number}.\n\n"
         f"ORIGINAL REPORT:\n{REPORT}"
@@ -438,8 +512,9 @@ def main_checker():
     global fetch_issue
 
     for number in (11166, 10656):
-        content, is_error = _check(number)
-        print(f"----- cited #{number}  is_error={is_error}\n{content}\n")
+        r = _check(number)
+        print(f"----- cited #{number}  is_error={r.is_error}  "
+              f"{r.usage.api_calls} calls, {r.usage.output_tokens} out\n{r.content}\n")
 
     calls = []
     real_fetch_issue = fetch_issue
@@ -451,7 +526,8 @@ def main_checker():
 
     fetch_issue = _raising_fetch_issue
     try:
-        content, is_error = _check(99999)
+        r = _check(99999)
+        content, is_error = r.content, r.is_error
     finally: 
         fetch_issue = real_fetch_issue
 
@@ -521,11 +597,11 @@ def main_checker_pairs(n: int = 8, seed: int = 0):
 
         for cited, counts, kind in ((pair["original"], true_counts, "true"),
                                     (decoy, rand_counts, "rand")):
-            content, is_error = run_checker_subagent(
+            r = run_checker_subagent(
                 f"CLAIM: the report below duplicates issue #{cited}.\n\n"
                 f"ORIGINAL REPORT:\n{report}"
             )
-            v = "ERROR" if is_error else _verdict(content)
+            v = "ERROR" if r.is_error else _verdict(r.content)
             counts[v] = counts.get(v, 0) + 1
             print(f"  #{dup['number']:>6} vs #{cited:<6} [{kind}] -> {v}")
 

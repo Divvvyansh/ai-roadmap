@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 
 import anthropic
 from anthropic.types import MessageParam
@@ -13,6 +14,8 @@ from dotenv import load_dotenv
 from retriever import QUERY_CACHE_PATH
 from subagents import (
     ISSUE_CACHE_PATH,
+    SubagentResult,
+    Usage,
     run_checker_subagent,
     run_docs_subagent,
     run_triage_subagent,
@@ -152,74 +155,134 @@ def _audit_checker_task(task: str) -> None:
         print("[checker] no leak markers found.\n")
 
 
-def run_delegate_tool(name: str, tool_input: dict) -> tuple[str, bool]:
-    """Dispatch one delegate tool_use block. Returns (content, is_error)."""
+def run_delegate_tool(name: str, tool_input: dict) -> SubagentResult:
+    """Dispatch one delegate tool_use block."""
     if name == "delegate_to_triage_agent":
-        content, is_error = run_triage_subagent(tool_input["task"])
-    elif name == "delegate_to_docs_agent":
-        content, is_error = run_docs_subagent(tool_input["task"])
-    elif name == "delegate_to_checker_agent":
+        return run_triage_subagent(tool_input["task"])
+    if name == "delegate_to_docs_agent":
+        return run_docs_subagent(tool_input["task"])
+    if name == "delegate_to_checker_agent":
         _audit_checker_task(tool_input["task"])
-        content, is_error = run_checker_subagent(tool_input["task"])
-    else:
-        raise NotImplementedError
-    return content, is_error
+        return run_checker_subagent(tool_input["task"])
+    raise NotImplementedError(name)
 
 
-def _run_one_block(block) -> dict:
-    """One tool_use block -> one tool_result dict (without tool ID). Must never raise.
-    """
+def _failed_delegation(block, exc: Exception) -> SubagentResult:
+    """A delegation that raised before the sub-agent could report for itself."""
+    return SubagentResult(
+        content=f"{type(exc).__name__}: {exc}",
+        is_error=True,
+        agent=block.name.replace("delegate_to_", "").replace("_agent", ""),
+        model="",
+        task=block.input.get("task", ""),
+        usage=Usage(),
+        turns=0,
+        tool_calls=[],
+        stop_reason="exception",
+    )
+
+
+def _run_one_block(block) -> SubagentResult:
+    """One tool_use block -> one SubagentResult. Must never raise."""
     try:
-        content, is_error = run_delegate_tool(block.name, block.input)
+        return run_delegate_tool(block.name, block.input)
     except Exception as exc:
-        content = f"{type(exc).__name__}: {exc}"
-        is_error = True
-    tool_result = {
+        return _failed_delegation(block, exc)
+
+
+def _tool_result(block, result: SubagentResult) -> dict:
+    """The only part of a SubagentResult the model ever sees."""
+    return {
         "type": "tool_result",
-        "content": content,
-        "is_error": is_error,
+        "tool_use_id": block.id,
+        "content": result.content,
+        "is_error": result.is_error,
     }
-    return tool_result
 
 
-def execute_blocks_serial(blocks) -> list[dict]:
+def execute_blocks_serial(blocks) -> tuple[list[dict], list[SubagentResult]]:
     """Baseline path. Kept only to capture the Step 9 "before" wall clock --
     delete it once the number is recorded in notes.md."""
-    tool_results = []
-    for block in blocks:
-        try:
-            content, is_error = run_delegate_tool(block.name, block.input)
-        except Exception as exc:
-            content = f"{type(exc).__name__}: {exc}"
-            is_error = True
-        tool_results.append({
-            "type": "tool_result",
-            "tool_use_id": block.id,
-            "content": content,
-            "is_error": is_error,
-        })
-    return tool_results
+    results = [_run_one_block(block) for block in blocks]
+    return [_tool_result(b, r) for b, r in zip(blocks, results)], results
 
 
-def execute_blocks_parallel(blocks) -> list[dict]:
+def execute_blocks_parallel(blocks) -> tuple[list[dict], list[SubagentResult]]:
     """Same contract as execute_blocks_serial: one tool_result per block, every
-    tool_use_id matched, all of them going back in a single user message."""
+    tool_use_id matched, all of them going back in a single user message.
+
+    Results are rebound to their originating block by the {future: block} map,
+    never by completion order -- `as_completed` order varies with timing, and
+    filing triage's answer under docs' tool_use_id produces a request the API
+    accepts and an orchestrator that reconciles two swapped signals."""
     with ThreadPoolExecutor(max_workers=len(blocks)) as pool:
         futures = {pool.submit(_run_one_block, block): block for block in blocks}
-        tool_results = []
-        for fut in as_completed(futures):
-            original = futures[fut]
-            value = fut.result()
-            value["tool_use_id"] = original.id
-            tool_results.append(value)
+        by_block = {futures[fut].id: fut.result() for fut in as_completed(futures)}
 
-    order = {b.id: i for i, b in enumerate(blocks)}
-    return sorted(tool_results, key=lambda r: order[r["tool_use_id"]])
+    results = [by_block[b.id] for b in blocks]
+    return [_tool_result(b, r) for b, r in zip(blocks, results)], results
 
 
-def orchestrate(issue_text: str) -> str:
+@dataclass
+class OrchestrationResult:
+    """One full orchestration, with the two levels of cost kept apart."""
+    recommendation: str
+    orchestrator_usage: Usage
+    delegations: list[SubagentResult]
+    orchestrator_turns: int
+    stop_reason: str
+
+    @property
+    def subagent_usage(self) -> Usage:
+        total = Usage()
+        for d in self.delegations:
+            total = total + d.usage
+        return total
+
+    @property
+    def agents_called(self) -> list[str]:
+        return [d.agent for d in self.delegations]
+
+    def as_dict(self) -> dict:
+        return {
+            "recommendation": self.recommendation,
+            "stop_reason": self.stop_reason,
+            "orchestrator_turns": self.orchestrator_turns,
+            "orchestrator_usage": self.orchestrator_usage.as_dict(),
+            "subagent_usage": self.subagent_usage.as_dict(),
+            "agents_called": self.agents_called,
+            "delegations": [d.as_dict() for d in self.delegations],
+        }
+
+    def cost_summary(self) -> str:
+        o, sa = self.orchestrator_usage, self.subagent_usage
+        rows = [("orchestrator", o), ("sub-agents", sa)]
+        out = [f"{'level':<14}{'calls':>7}{'in':>9}{'out':>8}{'cache_r':>9}"]
+        for name, u in rows:
+            out.append(f"{name:<14}{u.api_calls:>7}{u.input_tokens:>9}"
+                       f"{u.output_tokens:>8}{u.cache_read_input_tokens:>9}")
+        for d in self.delegations:
+            out.append(f"  {d.agent:<12}{d.usage.api_calls:>7}"
+                       f"{d.usage.input_tokens:>9}{d.usage.output_tokens:>8}"
+                       f"{d.usage.cache_read_input_tokens:>9}")
+        return "\n".join(out)
+
+
+def orchestrate(issue_text: str) -> OrchestrationResult:
     messages: list[MessageParam] = [{"role": "user", "content": issue_text}]
     last_text = ""
+    usage = Usage()
+    delegations: list[SubagentResult] = []
+
+    def done(stop_reason: str, text: str) -> OrchestrationResult:
+        """Single exit point, so no return path drops the trace."""
+        return OrchestrationResult(
+            recommendation=text,
+            orchestrator_usage=usage,
+            delegations=delegations,
+            orchestrator_turns=usage.api_calls,
+            stop_reason=stop_reason,
+        )
 
     while len(messages) < 2*MAX_TURNS + 1:
         response = client.messages.create(
@@ -229,6 +292,7 @@ def orchestrate(issue_text: str) -> str:
             tools=TOOLS,
             max_tokens=4000,
         )
+        usage.record(response.usage)
         messages.append({"role": "assistant", "content": response.content})
         last_text = " ".join(
             block.text for block in response.content if block.type == "text"
@@ -236,15 +300,18 @@ def orchestrate(issue_text: str) -> str:
 
         if response.stop_reason == "tool_use":
             blocks = [b for b in response.content if b.type == "tool_use"]
-            tool_results = execute_blocks_parallel(blocks)
+            tool_results, results = execute_blocks_parallel(blocks)
+            delegations.extend(results)
             messages.append({"role": "user", "content": tool_results})
         elif response.stop_reason == "end_turn":
-            return last_text
+            return done("end_turn", last_text)
         elif response.stop_reason == "max_tokens":
-            return f"Token limit exhausted: Partial result is {last_text}"
+            return done("max_tokens",
+                        f"Token limit exhausted: Partial result is {last_text}")
         else:
-            return (f"Failed with stop_reason={response.stop_reason}. "
-                                f"Partial result: {last_text}")
+            return done(response.stop_reason or "unknown",
+                        f"Failed with stop_reason={response.stop_reason}. "
+                        f"Partial result: {last_text}")
 
     final_response = client.messages.create(
                 model=MODEL,
@@ -254,18 +321,16 @@ def orchestrate(issue_text: str) -> str:
                 tool_choice={"type": "none"},
                 max_tokens=2000,
             ) 
+    usage.record(final_response.usage)
     messages.append({"role": "assistant", "content": final_response.content})
     last_text = " ".join(
         block.text for block in final_response.content if block.type == "text"
     )
-    return last_text
+    return done("turn_budget_exhausted", last_text)
+
 
 def issue_text_from_corpus(number: int) -> str:
     """The body of a real harvested issue, verbatim, as the orchestrator's input.
-
-    Used to force the checker path: pass the `duplicate` side of a pair from
-    eval/duplicate_pairs.json and triage has a real prior issue to find, so it
-    produces a citation the orchestrator then has to verify.
     """
     import json
     from subagents import ISSUES_PATH
@@ -292,8 +357,11 @@ if __name__ == "__main__":
 
     docs_before, issues_before = _cache_sizes()
     t = time.perf_counter()
-    print(orchestrate(issue_text))
+    result = orchestrate(issue_text)
     elapsed = time.perf_counter() - t
+    print(result.recommendation)
+    print()
+    print(result.cost_summary())
     docs_after, issues_after = _cache_sizes()
     print(f"\n{elapsed:.1f}s")
     print(f"new embeddings this run: "
