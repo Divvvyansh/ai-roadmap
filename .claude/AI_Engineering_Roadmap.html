@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI Engineering Roadmap</title>
+<style>
+  @page { size: A4; margin: 0; }
+
+  :root {
+    --ink:      #14171f;
+    --body:     #3d4351;
+    --muted:    #6b7280;
+    --faint:    #9aa1ae;
+    --rule:     #e3e6ec;
+    --accent:   #3d4fd6;
+    --accent-2: #6b46c1;
+    --wash:     #f5f6fa;
+    --done:     #0f8a5f;
+    --active:   #b45309;
+    --new:      #3d4fd6;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--body);
+    font-size: 10.2pt;
+    line-height: 1.5;
+  }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 20mm 18mm 16mm;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+
+  .folio {
+    position: absolute;
+    left: 18mm; right: 18mm; bottom: 10mm;
+    padding-top: 3mm;
+    border-top: 1px solid var(--rule);
+    font-size: 7.6pt;
+    letter-spacing: .04em;
+    color: var(--faint);
+    text-align: right;
+  }
+
+  /* ---------- cover ---------- */
+  .cover {
+    background: linear-gradient(150deg, #171b2e 0%, #232a4d 55%, #2f2555 100%);
+    color: #fff;
+    padding: 34mm 18mm 16mm;
+  }
+  .cover .eyebrow {
+    font-size: 8pt; letter-spacing: .22em; text-transform: uppercase;
+    color: #a7b0e8; margin-bottom: 7mm;
+  }
+  .cover h1 {
+    font-size: 40pt; line-height: 1.03; margin: 0 0 7mm;
+    font-weight: 700; letter-spacing: -.022em; color: #fff;
+  }
+  .cover h1 span { display: block; color: #b8b4f0; }
+  .cover .lede {
+    font-size: 11.4pt; line-height: 1.62; color: #d3d8f2;
+    max-width: 132mm; margin: 0 0 16mm;
+  }
+  .stats { display: flex; gap: 4mm; margin-bottom: 18mm; }
+  .stat {
+    flex: 1; padding: 6mm 4mm;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 3mm; text-align: center;
+  }
+  .stat .n { display: block; font-size: 21pt; font-weight: 700; color: #fff; letter-spacing: -.02em; }
+  .stat .l { display: block; font-size: 7.4pt; letter-spacing: .15em; text-transform: uppercase; color: #a7b0e8; margin-top: 2mm; }
+  .pull {
+    border-left: 3px solid #7b7ae8; padding-left: 6mm;
+    font-size: 10.6pt; line-height: 1.6; color: #ccd2ee; font-style: italic; max-width: 150mm;
+  }
+
+  /* ---------- glance ---------- */
+  h2.section {
+    font-size: 21pt; font-weight: 700; color: var(--ink);
+    letter-spacing: -.018em; margin: 0 0 2mm;
+  }
+  .sub { font-size: 9pt; color: var(--muted); margin: 0 0 8mm; }
+  .sub em { color: var(--accent); font-style: normal; font-weight: 600; }
+
+  .track { display: flex; gap: 2.4mm; margin-bottom: 4mm; }
+  .node { flex: 1; text-align: center; }
+  .node .pill {
+    display: block; padding: 3.6mm 0; border-radius: 2mm;
+    background: var(--wash); border: 1px solid var(--rule);
+    font-weight: 700; font-size: 11pt; color: var(--accent); letter-spacing: -.01em;
+  }
+  .node.is-done .pill { background: #eaf6f1; border-color: #bfe4d4; color: var(--done); }
+  .node.is-active .pill { background: #fdf3e3; border-color: #f0d9ab; color: var(--active); }
+  .node .wk { display: block; font-size: 7.2pt; color: var(--faint); margin-top: 2mm; letter-spacing: .03em; }
+  .node .nm { display: block; font-size: 7.4pt; color: var(--muted); margin-top: 1mm; line-height: 1.3; }
+
+  /* ---------- phase pages ---------- */
+  .meta {
+    font-size: 8pt; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin-bottom: 3.5mm;
+  }
+  .title { display: flex; align-items: baseline; gap: 3.5mm; margin-bottom: 2.5mm; }
+  .title .num {
+    font-size: 26pt; font-weight: 700; color: var(--faint);
+    letter-spacing: -.03em; line-height: 1;
+  }
+  .title h2 {
+    font-size: 21pt; font-weight: 700; color: var(--ink);
+    letter-spacing: -.02em; margin: 0; line-height: 1.1;
+  }
+  .badge {
+    font-size: 6.8pt; letter-spacing: .11em; text-transform: uppercase; font-weight: 700;
+    padding: 1.1mm 2.4mm; border-radius: 1.2mm; white-space: nowrap;
+  }
+  .badge.done   { background: #eaf6f1; color: var(--done); }
+  .badge.active { background: #fdf3e3; color: var(--active); }
+  .badge.new    { background: #eef0fd; color: var(--new); }
+
+  .tagline {
+    font-size: 10.4pt; color: var(--body); font-style: italic;
+    margin: 0 0 7mm; padding-bottom: 5mm; border-bottom: 1px solid var(--rule);
+  }
+
+  h3.kicker {
+    font-size: 8pt; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink); font-weight: 700; margin: 0 0 3.5mm;
+  }
+  ul.targets { margin: 0 0 6.5mm; padding: 0; list-style: none; }
+  ul.targets li {
+    position: relative; padding-left: 5.5mm; margin-bottom: 2.2mm; line-height: 1.5;
+  }
+  ul.targets li::before {
+    content: ""; position: absolute; left: 0; top: 1.9mm;
+    width: 2mm; height: 2mm; border-radius: 50%; background: var(--accent);
+  }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.8pt; color: var(--accent-2); }
+
+  .project {
+    background: var(--wash); border-left: 3px solid var(--accent);
+    padding: 4.5mm 5mm; border-radius: 0 2mm 2mm 0; margin-bottom: 6.5mm;
+    font-size: 9.8pt; line-height: 1.55;
+  }
+  .project b { color: var(--ink); }
+
+  .res { margin: 0; padding: 0; list-style: none; }
+  .res li { padding: 2.8mm 0; border-top: 1px solid var(--rule); }
+  .res li:last-child { border-bottom: 1px solid var(--rule); }
+  .res .rt { font-weight: 700; color: var(--ink); font-size: 9.6pt; }
+  .res .tag {
+    font-size: 6.4pt; letter-spacing: .1em; font-weight: 700; text-transform: uppercase;
+    padding: .7mm 1.8mm; border-radius: 1mm; margin-left: 2mm; vertical-align: 1.2mm;
+    background: #eef0fd; color: var(--new);
+  }
+  .res .tag.community { background: #f2f0f7; color: var(--accent-2); }
+  .res .rd { font-size: 8.9pt; color: var(--muted); line-height: 1.5; margin-top: .8mm; }
+  .res .rd b { color: var(--body); font-weight: 600; }
+
+  /* ---------- principles / decisions ---------- */
+  table.grid { width: 100%; border-collapse: collapse; margin-bottom: 9mm; }
+  table.grid td { padding: 3.6mm 0; border-top: 1px solid var(--rule); vertical-align: top; line-height: 1.5; }
+  table.grid tr:last-child td { border-bottom: 1px solid var(--rule); }
+  table.grid td.k { width: 52mm; padding-right: 6mm; font-weight: 700; color: var(--ink); font-size: 9.6pt; }
+  table.grid td.k .verdict {
+    display: block; font-size: 6.8pt; letter-spacing: .11em; text-transform: uppercase;
+    font-weight: 700; margin-top: 1.2mm;
+  }
+  .v-skip  { color: #b91c1c; }
+  .v-defer { color: var(--active); }
+  .v-learn { color: var(--done); }
+
+  .note {
+    margin-top: 8mm; padding: 4.5mm 5mm; border-radius: 2mm;
+    background: var(--wash); border: 1px solid var(--rule);
+    font-size: 8.8pt; color: var(--muted); line-height: 1.55;
+  }
+  .note b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ============ 1 · COVER ============ -->
+<section class="page cover">
+  <div class="eyebrow">Self-Directed Learning Plan</div>
+  <h1>AI Engineering<span>Roadmap</span></h1>
+  <p class="lede">
+    A seven-phase, project-driven path from API foundations to multi-agent orchestration
+    and capstone integration — built on direct API calls and mechanical understanding
+    rather than framework abstractions.
+  </p>
+  <div class="stats">
+    <div class="stat"><span class="n">7</span><span class="l">Phases</span></div>
+    <div class="stat"><span class="n">~28</span><span class="l">Weeks</span></div>
+    <div class="stat"><span class="n">~190</span><span class="l">Hours</span></div>
+    <div class="stat"><span class="n">5</span><span class="l">Projects</span></div>
+  </div>
+  <p class="pull">
+    “Skip premature abstractions. Learn the mechanics by building with direct API calls —
+    frameworks come later, once the patterns underneath them are already understood.”
+  </p>
+</section>
+
+<!-- ============ 2 · AT A GLANCE ============ -->
+<section class="page">
+  <h2 class="section">Roadmap at a Glance</h2>
+  <p class="sub"><em>Updated</em> — Phases 4.5 and 5 are now one continuous project: the orchestrator is hand-built first, then converted to MCP.</p>
+
+  <div class="track">
+    <div class="node is-done"><span class="pill">P1</span><span class="wk">Wks 1–3</span><span class="nm">Expense Tracker</span></div>
+    <div class="node is-done"><span class="pill">P2</span><span class="wk">Wks 4–7</span><span class="nm">Calendar Agent</span></div>
+    <div class="node is-done"><span class="pill">P3</span><span class="wk">Wks 8–13</span><span class="nm">RAG + Evals</span></div>
+    <div class="node is-done"><span class="pill">P4</span><span class="wk">Wks 14–17</span><span class="nm">MLOps</span></div>
+    <div class="node is-active"><span class="pill">P4.5</span><span class="wk">Wks 18–20</span><span class="nm">Orchestration</span></div>
+    <div class="node"><span class="pill">P5</span><span class="wk">Wks 21–25</span><span class="nm">MCP Capstone</span></div>
+    <div class="node"><span class="pill">P6</span><span class="wk">Wks 26–28</span><span class="nm">Frameworks</span></div>
+  </div>
+
+  <div class="meta" style="margin-top:12mm">Weeks 1–3 · ~18 hours</div>
+  <div class="title">
+    <span class="num">1</span>
+    <h2>Smart Expense Tracker</h2>
+    <span class="badge done">Done</span>
+  </div>
+  <p class="tagline">Closing API foundation gaps — auth, request/response handling, error states, persistence.</p>
+
+  <h3 class="kicker">Core Learning Targets</h3>
+  <ul class="targets">
+    <li>Structuring a FastAPI app with proper request/response models</li>
+    <li>Serving with Gunicorn — process management basics</li>
+    <li>Designing clean error states instead of raw stack traces</li>
+    <li>First contact with the Claude API for unstructured-to-structured parsing</li>
+  </ul>
+
+  <div class="project">
+    <b>Project:</b> An expense tracker that takes free-text entries (“$12 lunch with Sam”) and parses
+    them into structured records via the Claude API, served through FastAPI + Gunicorn.
+  </div>
+
+  <h3 class="kicker">Resources &amp; Learning Material</h3>
+  <ul class="res">
+    <li><span class="rt">Anthropic Academy — Building with the Claude API</span><span class="tag">Official</span>
+      <div class="rd">Skilljar, ~8 hrs. The deepest official course on request structure, error handling, and API patterns.</div></li>
+    <li><span class="rt">FastAPI official docs — Tutorial</span><span class="tag">Official</span>
+      <div class="rd"><b>fastapi.tiangolo.com/tutorial</b> — work through request bodies, response models, and error handling sections specifically.</div></li>
+    <li><span class="rt">Gunicorn docs — Design &amp; Deployment</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.gunicorn.org</b> — worker types and process management; short, no need for more than this.</div></li>
+  </ul>
+
+  <div class="folio">AI Engineering Roadmap — 2</div>
+</section>
+
+<!-- ============ 3 · PHASE 2 ============ -->
+<section class="page">
+  <div class="meta">Weeks 4–7 · ~22 hours</div>
+  <div class="title">
+    <span class="num">2</span>
+    <h2>Natural Language Calendar Agent</h2>
+    <span class="badge done">Done</span>
+  </div>
+  <p class="tagline">Agentic tool loops, built with direct Anthropic API calls — no LangChain.</p>
+
+  <h3 class="kicker">Core Learning Targets</h3>
+  <ul class="targets">
+    <li>Mechanical understanding of the tool-use loop: <code>tool_use</code> → execute → <code>tool_result</code> → continue</li>
+    <li>Writing tool descriptions as prompts, not documentation</li>
+    <li>Chaining as an emergent model decision, not explicit orchestration code</li>
+    <li>Correct placement of human-in-the-loop confirmation (system prompt and tool description)</li>
+    <li>Safe conversation-history trimming (avoiding the 400 Bad Request from orphaned <code>tool_result</code> blocks)</li>
+  </ul>
+
+  <div class="project">
+    <b>Project:</b> A Google Calendar agent (<code>get_events</code>, <code>find_free_slots</code>,
+    create/update/cancel_event, <code>get_weather</code>) with a CLI front-end and a Telegram bot stretch
+    goal — confirmed working, including a real encounter with the history-trimming 400 error.
+  </div>
+
+  <h3 class="kicker">Resources &amp; Learning Material</h3>
+  <ul class="res">
+    <li><span class="rt">Anthropic docs — Tool use overview</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.claude.com/en/docs/build-with-claude/tool-use</b> — the canonical reference for tool_use/tool_result block structure.</div></li>
+    <li><span class="rt">Claude Cookbook — Tool use &amp; function calling</span><span class="tag">Official</span>
+      <div class="rd"><b>github.com/anthropics/claude-cookbooks</b> — runnable notebooks showing the full loop, including multi-tool chaining.</div></li>
+    <li><span class="rt">Google Calendar API — Python quickstart</span><span class="tag">Official</span>
+      <div class="rd"><b>developers.google.com/calendar/api/quickstart/python</b> — covers OAuth consent screen, scopes, and token refresh.</div></li>
+  </ul>
+
+  <div class="folio">AI Engineering Roadmap — 3</div>
+</section>
+
+<!-- ============ 4 · PHASE 3 ============ -->
+<section class="page">
+  <div class="meta">Weeks 8–13 · ~32 hours</div>
+  <div class="title">
+    <span class="num">3</span>
+    <h2>AI Support Agent: RAG + Eval Harness</h2>
+    <span class="badge done">Done</span>
+  </div>
+  <p class="tagline">Vector databases introduced contextually, exactly when the project needs them.</p>
+
+  <h3 class="kicker">Core Learning Targets</h3>
+  <ul class="targets">
+    <li>Chunking strategy and embedding generation — the mechanics, not just calling an API</li>
+    <li>ChromaDB locally → similarity search → relevance thresholds</li>
+    <li>Building an eval harness: retrieval precision/recall, groundedness checks, hallucination detection</li>
+    <li>Where RAG grounding constraints belong (same “close to the decision point” principle from tool descriptions)</li>
+  </ul>
+
+  <div class="project">
+    <b>Project:</b> A support agent answering grounded questions from a real document corpus, with a
+    working eval harness measuring whether retrieved chunks actually support the generated answer.
+    Built on the FastAPI docs corpus, with a committed k/threshold parameter sweep and separate
+    baseline and final groundedness runs.
+  </div>
+
+  <h3 class="kicker">Resources &amp; Learning Material</h3>
+  <ul class="res">
+    <li><span class="rt">Claude Cookbook — RAG guide</span><span class="tag">Official</span>
+      <div class="rd">Naive RAG pipeline plus a dedicated section on evaluating retrieval vs. end-to-end performance separately.</div></li>
+    <li><span class="rt">Claude Cookbook — Contextual retrieval guide</span><span class="tag">Official</span>
+      <div class="rd"><b>platform.claude.com/cookbook/capabilities-contextual-embeddings-guide</b> — improving chunk relevance with contextual embeddings; read after the basic RAG guide, not before.</div></li>
+    <li><span class="rt">ChromaDB docs — Getting Started</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.trychroma.com</b> — local persistence, collections, and similarity search basics; you need only the first few pages.</div></li>
+    <li><span class="rt">Anthropic Academy — AI Fluency / Evaluations track</span><span class="tag">Official</span>
+      <div class="rd">Skilljar — the most relevant addition once retrieval is working.</div></li>
+  </ul>
+
+  <div class="folio">AI Engineering Roadmap — 4</div>
+</section>
+
+<!-- ============ 5 · PHASE 4 ============ -->
+<section class="page">
+  <div class="meta">Weeks 14–17 · ~24 hours</div>
+  <div class="title">
+    <span class="num">4</span>
+    <h2>MLOps Sprint</h2>
+    <span class="badge done">Done</span>
+  </div>
+  <p class="tagline">Deploy and monitor the Phase 3 RAG agent — taking it from script to service.</p>
+
+  <h3 class="kicker">Core Learning Targets</h3>
+  <ul class="targets">
+    <li>Containerizing the RAG agent for deployment</li>
+    <li>Basic monitoring: latency, error rates, eval-score drift over time</li>
+    <li>Logging tool calls and retrieval results for post-hoc debugging</li>
+    <li>What “production-ready” actually requires beyond a working notebook</li>
+  </ul>
+
+  <div class="project">
+    <b>Project:</b> The Phase 3 RAG agent deployed as a monitored service on ECS Fargate — secrets in
+    Secrets Manager, separate IAM execution and task roles, CloudWatch logs and dashboards, and an
+    eval-drift log tracking retrieval and groundedness as separate fields over time.
+  </div>
+
+  <h3 class="kicker">Resources &amp; Learning Material</h3>
+  <ul class="res">
+    <li><span class="rt">Docker docs — Get Started</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.docker.com/get-started</b> — just enough to containerize a FastAPI service correctly.</div></li>
+    <li><span class="rt">Anthropic docs — Monitoring &amp; usage</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.claude.com</b> — check the platform usage/cost tracking pages for what's available out of the box before building custom logging.</div></li>
+    <li><span class="rt">Prometheus + Grafana — Get Started guide</span><span class="tag community">Community</span>
+      <div class="rd">The standard lightweight stack for self-hosted latency/error dashboards; overkill is easy here, keep it to 2–3 panels.</div></li>
+  </ul>
+
+  <div class="folio">AI Engineering Roadmap — 5</div>
+</section>
+
+<!-- ============ 6 · PHASE 4.5 (REWRITTEN) ============ -->
+<section class="page">
+  <div class="meta">Weeks 18–20 · ~16 hours</div>
+  <div class="title">
+    <span class="num">4.5</span>
+    <h2>Multi-Agent Orchestration</h2>
+    <span class="badge active">In Progress</span>
+  </div>
+  <p class="tagline">Sub-agent delegation and context management — via direct API calls, before any framework.</p>
+
+  <h3 class="kicker">Core Learning Targets</h3>
+  <ul class="targets">
+    <li>Orchestrator/worker pattern: a “delegate” tool whose implementation is itself a full nested agent loop</li>
+    <li>Context isolation vs. sharing: does a sub-agent get full parent history, or a scoped summary?</li>
+    <li>Result surfacing: collapsing a sub-agent's internal multi-turn loop into a single <code>tool_result</code> block</li>
+    <li>Reconciling conflicting sub-agent signals into one recommendation — in the system prompt and eval spec, never hardcoded as branching logic</li>
+    <li>Failure propagation: what the orchestrator sees when a sub-agent errors several levels deep</li>
+    <li>Chunking and embedding as a function of <i>document shape</i> — issue-to-issue matching is symmetric, unlike Phase 3's query-to-document retrieval</li>
+  </ul>
+
+  <div class="project">
+    <b>Project — OSS Maintainer Copilot:</b> an orchestrator that decides what a maintainer should do
+    with an incoming issue on <code>pydantic/pydantic</code>, by delegating to a triage sub-agent
+    (duplicate detection over issue history) and a docs sub-agent (the Phase 3 RAG agent, corpus
+    swapped to pydantic's docs). The two routinely disagree — “likely duplicate of #10590” against
+    “the docs don't cover this case at all” — and reconciling them is the deliverable. Ground truth
+    is harvested from the repo's duplicate-labeled issues; writes go to a personal sandbox repo
+    behind an orchestrator-level approval step.
+  </div>
+
+  <h3 class="kicker">Resources &amp; Learning Material</h3>
+  <ul class="res">
+    <li><span class="rt">Claude Cookbook — Sub-agents notebook</span><span class="tag">Official</span>
+      <div class="rd"><b>github.com/anthropics/claude-cookbooks</b> — using a smaller model as a sub-agent under a larger orchestrator; the closest official example to this phase's project.</div></li>
+    <li><span class="rt">Claude Code docs — Subagents</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.claude.com/en/docs/claude-code/sub-agents</b> — even though this describes Claude Code's own subagents, the context-isolation model it documents is conceptually identical to what you're hand-building.</div></li>
+    <li><span class="rt">GitHub REST API — Issues</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.github.com/rest/issues</b> — pagination, the <code>pull_request</code> field that contaminates issue lists, and the primary vs. secondary rate limits that supply this phase's failure cases.</div></li>
+    <li><span class="rt">Anthropic Academy — Subagents course</span><span class="tag">Official</span>
+      <div class="rd">Skilljar, ~30–60 min — short, but useful for vocabulary before you build the pattern yourself from scratch.</div></li>
+  </ul>
+
+  <div class="folio">AI Engineering Roadmap — 6</div>
+</section>
+
+<!-- ============ 7 · PHASE 5 (REWRITTEN) ============ -->
+<section class="page">
+  <div class="meta">Weeks 21–25 · ~30 hours</div>
+  <div class="title">
+    <span class="num">5</span>
+    <h2>MCP Capstone</h2>
+    <span class="badge new">Revised</span>
+  </div>
+  <p class="tagline">The same system as Phase 4.5, with exactly one thing changed: where sub-agent code runs.</p>
+
+  <h3 class="kicker">Core Learning Targets</h3>
+  <ul class="targets">
+    <li>Converting hand-written sub-agents into MCP servers without the orchestrator noticing</li>
+    <li>Consuming an MCP server you did <i>not</i> write — the first tool in the system whose schema you don't control</li>
+    <li>Measuring what MCP costs and buys by re-running Phase 4.5's eval unchanged across the transport swap</li>
+    <li>Whether a hand-built failure taxonomy survives someone else's error handling</li>
+    <li>Exposing your own system as an MCP server others can point at their repo</li>
+    <li>End-to-end integration testing across services with different deployment states</li>
+  </ul>
+
+  <div class="project">
+    <b>Project:</b> Take the Phase 4.5 Maintainer Copilot and (1) convert each sub-agent into an MCP
+    server, with the orchestrator becoming an MCP client; (2) re-run the identical eval to get a real
+    number for MCP's latency cost and composability gain; (3) delete the hand-rolled GitHub REST
+    client in favour of GitHub's official MCP server; (4) add an external MCP you didn't write —
+    Slack, for notifications; (5) publish maintainer-copilot itself as an MCP server anyone can run
+    against their own repository. Step 3 teaches the most, and only works because Phase 4.5 hand-wrote
+    the thing it replaces.
+  </div>
+
+  <h3 class="kicker">Resources &amp; Learning Material</h3>
+  <ul class="res">
+    <li><span class="rt">Model Context Protocol — Official docs</span><span class="tag">Official</span>
+      <div class="rd"><b>modelcontextprotocol.io</b> — start with “Core Architecture” then “Build an MCP Server,” in that order.</div></li>
+    <li><span class="rt">Anthropic docs — MCP quickstart</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.claude.com/en/docs/claude-code/mcp</b> — connects an MCP server end to end; the fastest path to a working first server.</div></li>
+    <li><span class="rt">GitHub MCP server</span><span class="tag">Official</span>
+      <div class="rd">The drop-in replacement for your Phase 4.5 REST client — read its tool schemas before converting, and note where they don't match the ones you wrote.</div></li>
+    <li><span class="rt">Claude Cookbook — MCP examples</span><span class="tag">Official</span>
+      <div class="rd"><b>github.com/anthropics/claude-cookbooks</b> — check the <code>mcp/</code> directory for server examples close to your use case.</div></li>
+  </ul>
+
+  <div class="folio">AI Engineering Roadmap — 7</div>
+</section>
+
+<!-- ============ 8 · PHASE 6 ============ -->
+<section class="page">
+  <div class="meta">Weeks 26–28 · ~14 hours</div>
+  <div class="title">
+    <span class="num">6</span>
+    <h2>Frameworks: LangGraph &amp; n8n</h2>
+    <span class="badge new">New</span>
+  </div>
+  <p class="tagline">Now that the mechanics are second nature, learn the abstractions that wrap them.</p>
+
+  <h3 class="kicker">Core Learning Targets</h3>
+  <ul class="targets">
+    <li>Mapping LangGraph's graph/state/node abstractions onto the tool loop you already built by hand</li>
+    <li>Recognizing what LangGraph buys you (state persistence, visualization, checkpointing) versus what it hides</li>
+    <li>n8n as a visual automation layer — connecting your existing agents into workflows without glue code</li>
+    <li>Judging, case by case, when a framework is worth the abstraction cost in real projects</li>
+  </ul>
+
+  <div class="project">
+    <b>Project:</b> Re-implement the Phase 4.5 orchestrator in LangGraph, then build an n8n workflow
+    that triggers it — comparing both against the hand-built version for clarity, debuggability, and
+    development speed. Optional third arm: the same orchestrator expressed as Claude Code subagents,
+    which is the config-file end of the same spectrum.
+  </div>
+
+  <h3 class="kicker">Resources &amp; Learning Material</h3>
+  <ul class="res">
+    <li><span class="rt">LangGraph official docs — Tutorials</span><span class="tag">Official</span>
+      <div class="rd"><b>langchain-ai.github.io/langgraph</b> — start with the “Quickstart” then “Common workflows”; you'll recognize the tool loop immediately.</div></li>
+    <li><span class="rt">LangGraph — Multi-agent concepts page</span><span class="tag">Official</span>
+      <div class="rd">Read this specifically against your Phase 4.5 build — it's the best way to see what the framework abstracts vs. what you already did by hand.</div></li>
+    <li><span class="rt">n8n official docs — Workflow basics</span><span class="tag">Official</span>
+      <div class="rd"><b>docs.n8n.io</b> — nodes, triggers, and the HTTP Request node are the only things you need to connect your existing agents.</div></li>
+    <li><span class="rt">n8n — AI Agent node documentation</span><span class="tag">Official</span>
+      <div class="rd">Covers wiring n8n directly to the Claude API and to MCP servers from Phase 5.</div></li>
+  </ul>
+
+  <div class="folio">AI Engineering Roadmap — 8</div>
+</section>
+
+<!-- ============ 9 · PRINCIPLES + DECISIONS ============ -->
+<section class="page">
+  <h2 class="section">Guiding Principles</h2>
+  <p class="sub">What's carried through every phase of this roadmap</p>
+
+  <table class="grid">
+    <tr>
+      <td class="k">Mechanics before abstraction</td>
+      <td>Every pattern (tool loops, RAG, orchestration) is built once with direct API calls before any
+      framework is introduced. Frameworks are learned last, in Phase 6, once there's a hand-built mental
+      model to compare them against.</td>
+    </tr>
+    <tr>
+      <td class="k">Contextual introduction</td>
+      <td>Tools like vector databases are introduced exactly when a project needs them — not front-loaded.
+      This is why ChromaDB lives in Phase 3, not Phase 1.</td>
+    </tr>
+    <tr>
+      <td class="k">Confirmation at the decision point</td>
+      <td>Constraints (human-in-the-loop confirmation, RAG grounding rules) belong as close to the model's
+      decision point as possible — in tool descriptions, not just system prompts.</td>
+    </tr>
+    <tr>
+      <td class="k">One new variable at a time</td>
+      <td>Phases 4.5 and 5 build one system across two phases, changing only the transport between them.
+      Failure propagation can't be learned while the protocol underneath it is also new.</td>
+    </tr>
+    <tr>
+      <td class="k">Improvement is a number</td>
+      <td>Retrieval, groundedness, and refusal correctness are tracked separately and never blended into a
+      single accuracy score. “I improved it” requires a committed before and after.</td>
+    </tr>
+    <tr>
+      <td class="k">Credentials vs. self-direction</td>
+      <td>Paid courses are skipped in favor of free, high-quality resources (Anthropic's Skilljar curriculum)
+      unless a specific credential has clear employer value.</td>
+    </tr>
+  </table>
+
+  <h2 class="section">Skip / Defer / Learn Decisions</h2>
+  <p class="sub">&nbsp;</p>
+
+  <table class="grid">
+    <tr>
+      <td class="k">LangChain / LangGraph<span class="verdict v-defer">Defer</span></td>
+      <td>Deferred to Phase 6. Abstracts away the tool-loop mechanics that Phases 2–4.5 are designed to teach directly.</td>
+    </tr>
+    <tr>
+      <td class="k">n8n<span class="verdict v-defer">Defer</span></td>
+      <td>Deferred to Phase 6. A productivity multiplier for someone who already has working agents to connect — not a foundational tool.</td>
+    </tr>
+    <tr>
+      <td class="k">Vector databases<span class="verdict v-learn">Learn</span></td>
+      <td>Learn in Phase 3. Introduced contextually when the RAG project creates a real need for similarity search.</td>
+    </tr>
+    <tr>
+      <td class="k">Multi-agent orchestration<span class="verdict v-learn">Learn</span></td>
+      <td>Learn in Phase 4.5. Mechanical, hand-built — sub-agent delegation and context management before any orchestration framework.</td>
+    </tr>
+    <tr>
+      <td class="k">MCP<span class="verdict v-defer">Defer</span></td>
+      <td>Deferred to Phase 5, on the same system Phase 4.5 built by hand. Introducing the protocol alongside orchestration would make failures impossible to localize.</td>
+    </tr>
+    <tr>
+      <td class="k">BITS Pilani GenAI course<span class="verdict v-skip">Skip</span></td>
+      <td>Assessed as not worth enrolling in given demonstrated self-direction; free resources cover the same ground.</td>
+    </tr>
+  </table>
+
+  <div class="note">
+    <b>Source note:</b> this document is generated from
+    <code>.claude/AI_Engineering_Roadmap.html</code>. Edit the HTML and re-render — don't edit the PDF.
+  </div>
+
+  <div class="folio">AI Engineering Roadmap — 9</div>
+</section>
+
+</body>
+</html>

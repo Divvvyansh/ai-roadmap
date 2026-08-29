@@ -4,11 +4,16 @@ __pycache__/
 *.pyc
 *.db
 *.json
+*.jsonl
 *.py[codz]
 *$py.class
+*.sh
 
 # C extensions
 *.so
+
+# markdown files
+*.md
 
 # Distribution / packaging
 .Python
@@ -212,6 +217,7 @@ __marimo__/
 
 #chromaDB
 chroma_store/
+corpus/
 
 credentials.json
 token.json
@@ -229,3 +235,4 @@ token.json
 # Personal planning docs — not part of any portfolio project
 ai-roadmap-updated.pdf
 calendar_agent/CLAUDE.md
+annotate.py
