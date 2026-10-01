@@ -92,11 +92,6 @@ def main() -> None:
     # On the other hand, the second one has no error flag or iss_error becuase to get an error you must break the protocol itself.
     # For ex: try method:"tool/nope".
 
-
-    # 5. TODO: add `print("hello")` inside a tool in server.py, re-run this,
-    #    and watch what breaks. Then take it out.
-    #    Q: exactly which step above fails, and why that one?
-
     proc.terminate()
 
 if __name__ == "__main__":

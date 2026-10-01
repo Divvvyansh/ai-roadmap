@@ -7,6 +7,9 @@ import sqlite3
 from pathlib import Path
 
 from mcp.server import MCPServer
+from typing import Annotated
+from pydantic import Field
+
 
 DB_PATH = Path(__file__).parent / "data" / "chinook.db"
 MAX_ROWS = 100  # tune this once you've seen what a real result looks like
@@ -64,13 +67,13 @@ def get_schema(table: str) -> str:
     If the query returns more than 100 rows, only the first 100 will be returned, and a note will be added to the output indicating that the result was truncated.
     If an error occurs while executing the query, an error message will be returned instead of the rows.
     """)
-def run_query(sql: str) -> str:
+def run_query(
+    sql: Annotated[str, Field(description="A single read-only SELECT statement.")]
+) -> str:
     conn = connect()
     cursor = conn.cursor()
     try:
         cursor.execute(sql)
-        # description is only populated after execute(), and is None for statements
-        # that return no result set at all.
         columns = [d[0] for d in cursor.description] if cursor.description else []
         rows = cursor.fetchmany(MAX_ROWS + 1)
         if not rows:
