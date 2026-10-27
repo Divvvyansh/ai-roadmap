@@ -7,10 +7,12 @@ import asyncio
 import os
 import sys
 import json
+import re
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from mcp import Client, StdioServerParameters
+from mcp.shared.exceptions import MCPError
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
@@ -39,6 +41,26 @@ def to_anthropic_tools(mcp_tools) -> list[dict]:
     ]
 
 
+async def expand_mentions(client: Client, user_input: str) -> str | list[dict]:
+    """Turn "what is in @albums?" into a user message with schema://albums attached.
+    """
+    mentioned_words = list(dict.fromkeys(re.findall(r"@(\w+)", user_input)))
+    if not mentioned_words:
+        return user_input  
+    content_blocks = []
+    for word in mentioned_words:
+        block = {"type": "text"}
+        try:
+            result = await client.read_resource(f"schema://{word}")
+            block["text"] = f"Schema for {word}:\n{result.contents[0].text}"
+            content_blocks.append(block)
+        except MCPError:
+            block["text"] = f"Tried reading schema for table named: {word} but returned no results."
+            content_blocks.append(block)
+    content_blocks.append({"type": "text", "text": user_input})
+    return content_blocks
+
+
 async def run_turn(anthropic: Anthropic, client: Client, messages: list[dict], tools: list[dict]) -> None:
     """One user turn: call the model, run any tools it asks for, repeat until it stops.
 
@@ -63,7 +85,8 @@ async def run_turn(anthropic: Anthropic, client: Client, messages: list[dict], t
             tool_results = []
             for block in response.content:
                 if block.type != "tool_use":
-                    continue  
+                    continue
+                print(f"[tool call: {block.name}({block.input})]")
                 result = await client.call_tool(block.name, block.input)
                 tool_results.append(
                     {
@@ -97,7 +120,8 @@ async def main() -> None:
                 break
             if not user_input or user_input in {"quit", "exit"}:
                 break
-            messages.append({"role": "user", "content": user_input})
+            content = await expand_mentions(client, user_input)
+            messages.append({"role": "user", "content": content})
             await run_turn(anthropic, client, messages, tools)
 
 
